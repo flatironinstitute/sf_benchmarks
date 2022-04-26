@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.14)
+project(
+  sf_benchmarks
+  LANGUAGES C CXX
+  )
+include(ExternalProject)
+
+find_package(GSL REQUIRED)
+
+set (default_build_type "Release")
+if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message (STATUS "No build type specified. Setting build type to Release.")
+  set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Valid options: Debug, RelWithDebInfo, Release" FORCE)
+endif()
+
+set(SF_INCLUDES
+  ${PROJECT_SOURCE_DIR}/include
+)
+
+ExternalProject_Add(libsleef
+  SOURCE_DIR ${PROJECT_SOURCE_DIR}/extern/sleef
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/contrib
+)
+
+include_directories(${CMAKE_BINARY_DIR}/contrib/include)
+link_directories(${CMAKE_BINARY_DIR}/contrib/lib)
+
+file(GLOB SF_SOURCES "src/*.cpp")
+add_executable(sf_benchmarks ${SF_SOURCES})
+target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES})
+target_link_libraries(sf_benchmarks sleef gsl)
+add_dependencies(sf_benchmarks libsleef)
