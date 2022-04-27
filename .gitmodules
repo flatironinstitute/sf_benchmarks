@@ -1,3 +1,6 @@
 [submodule "extern/sleef"]
 	path = extern/sleef
 	url = https://github.com/shibatch/sleef
+[submodule "extern/baobzi"]
+	path = extern/baobzi
+	url = https://github.com/flatironinstitute/baobzi

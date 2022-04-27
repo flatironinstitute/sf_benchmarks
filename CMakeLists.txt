@@ -22,11 +22,16 @@ ExternalProject_Add(libsleef
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/contrib
 )
 
+ExternalProject_Add(libbaobzi
+  SOURCE_DIR ${PROJECT_SOURCE_DIR}/extern/baobzi
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/contrib -G "Unix Makefiles"
+)
+
 include_directories(${CMAKE_BINARY_DIR}/contrib/include)
-link_directories(${CMAKE_BINARY_DIR}/contrib/lib)
+link_directories(${CMAKE_BINARY_DIR}/contrib/lib64)
 
 file(GLOB SF_SOURCES "src/*.cpp")
 add_executable(sf_benchmarks ${SF_SOURCES})
 target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES})
-target_link_libraries(sf_benchmarks sleef gsl)
-add_dependencies(sf_benchmarks libsleef)
+target_link_libraries(sf_benchmarks sleef gsl baobzi)
+add_dependencies(sf_benchmarks libsleef libbaobzi)
