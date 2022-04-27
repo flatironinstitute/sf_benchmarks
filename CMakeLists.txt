@@ -24,7 +24,8 @@ ExternalProject_Add(libsleef
 
 ExternalProject_Add(libbaobzi
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/extern/baobzi
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/contrib -G "Unix Makefiles"
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/contrib -DBAOBZI_BUILD_TESTS=OFF
+             -DBAOBZI_BUILD_SHARED=OFF -DBAOBZI_BUILD_EXAMPLES=OFF -DBAOBZI_BUILD_STATIC=ON
 )
 
 include_directories(${CMAKE_BINARY_DIR}/contrib/include)
