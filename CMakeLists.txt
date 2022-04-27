@@ -6,6 +6,7 @@ project(
 include(ExternalProject)
 
 find_package(GSL REQUIRED)
+find_package(Boost)
 
 set (default_build_type "Release")
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -33,6 +34,6 @@ link_directories(${CMAKE_BINARY_DIR}/contrib/lib64)
 
 file(GLOB SF_SOURCES "src/*.cpp")
 add_executable(sf_benchmarks ${SF_SOURCES})
-target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES})
+target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES} ${GSL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 target_link_libraries(sf_benchmarks sleef gsl baobzi)
 add_dependencies(sf_benchmarks libsleef libbaobzi)
