@@ -81,8 +81,14 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
 
 int main(int argc, char *argv[]) {
     std::unordered_map<std::string, fun_1d> gsl_funs = {
+        {"sin_pi", gsl_sf_sin_pi},
+        {"cos_pi", gsl_sf_cos_pi},
+        {"erf", gsl_sf_erf},
+        {"erfc", gsl_sf_erfc},
         {"tgamma", gsl_sf_gamma},
         {"lgamma", gsl_sf_lngamma},
+        {"log", gsl_sf_log},
+        {"pow13", [](double x) -> double { return gsl_sf_pow_int(x, 13); }},
         {"bessel_Y0", gsl_sf_bessel_Y0},
         {"bessel_Y1", gsl_sf_bessel_Y1},
         {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
@@ -105,10 +111,15 @@ int main(int argc, char *argv[]) {
         {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
         {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
         {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
+        {"riemann_zeta", gsl_sf_zeta},
     };
     std::unordered_map<std::string, fun_1d> boost_funs = {
+        {"sin_pi", [](double x) -> double { return boost::math::sin_pi(x); }},
+        {"cos_pi", [](double x) -> double { return boost::math::cos_pi(x); }},
         {"tgamma", [](double x) -> double { return boost::math::tgamma<double>(x); }},
         {"lgamma", [](double x) -> double { return boost::math::lgamma<double>(x); }},
+        {"log", [](double x) -> double { return boost::math::log1p(x - 1); }},
+        {"pow13", [](double x) -> double { return boost::math::pow<13>(x); }},
         {"erf", [](double x) -> double { return boost::math::erf(x); }},
         {"erfc", [](double x) -> double { return boost::math::erfc(x); }},
         {"bessel_Y0", [](double x) -> double { return boost::math::cyl_neumann(0, x); }},
@@ -133,15 +144,32 @@ int main(int argc, char *argv[]) {
         {"hermite_1", [](double x) -> double { return boost::math::hermite(1, x); }},
         {"hermite_2", [](double x) -> double { return boost::math::hermite(2, x); }},
         {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
+        {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
+        {"riemann_zeta", [](double x) -> double { return boost::math::zeta(x); }},
     };
     std::unordered_map<std::string, fun_1d> std_funs = {
         {"tgamma", [](double x) -> double { return std::tgamma(x); }},
         {"lgamma", [](double x) -> double { return std::lgamma(x); }},
         {"erf", [](double x) -> double { return std::erf(x); }},
         {"erfc", [](double x) -> double { return std::erfc(x); }},
+        {"log", [](double x) -> double { return std::log(x); }},
+        {"log10", [](double x) -> double { return std::log10(x); }},
+        {"pow3.5", [](double x) -> double { return std::pow(x, 3.5); }},
+        {"pow13", [](double x) -> double { return std::pow(x, 13); }},
     };
     std::unordered_map<std::string, fun_1d> sctl_funs;
-    std::unordered_map<std::string, fun_1d> sleef_funs;
+    std::unordered_map<std::string, fun_1d> sleef_funs = {
+        {"sin_pi", Sleef_sinpid1_u05purecfma},
+        {"cos_pi", Sleef_cospid1_u05purecfma},
+        {"log", Sleef_logd1_u10purecfma},
+        {"log10", Sleef_log10d1_u10purecfma},
+        {"erf", Sleef_erfd1_u10purecfma},
+        {"erfc", Sleef_erfcd1_u15purecfma},
+        {"lgamma", Sleef_lgammad1_u10purecfma},
+        {"tgamma", Sleef_tgammad1_u10purecfma},
+        {"pow3.5", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); }},
+        {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
+    };
 
     std::unordered_set<std::string> fun_union;
     for (auto kv : gsl_funs)
