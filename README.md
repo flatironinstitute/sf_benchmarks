@@ -1,7 +1,8 @@
 # Benchmarks of various special function libraries
 
 Some preliminary results on my workstation. Certainly not
-definitive. All inputs are random on the interval [0,1] for example.
+definitive. All inputs are random on the interval [0,1] for example. I
+also don't use any vectorized implementations yet. Only the single evals.
 
 ```
 function           Mevals/s
