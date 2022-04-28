@@ -1,5 +1,4 @@
-#include "boost/math/special_functions/math_fwd.hpp"
-#include "gsl/gsl_sf_gamma.h"
+#include <algorithm>
 #include <cstdlib>
 #include <iomanip>
 #include <ios>
@@ -26,7 +25,7 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
     return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
 }
 
-typedef double (*fun_1d)(double);
+typedef std::function<double(double)> fun_1d;
 
 class BenchResult {
   public:
@@ -67,7 +66,7 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     if (!funs.count(name))
         return BenchResult(label);
 
-    fun_1d f = funs.at(name);
+    const fun_1d &f = funs.at(name);
     BenchResult res(label, vals.size());
 
     const struct timespec st = get_wtime();
@@ -80,38 +79,66 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     return res;
 }
 
-double boost_bessel_Y0(double x) { return boost::math::cyl_neumann(0, x); }
-double boost_bessel_K0(double x) { return boost::math::cyl_bessel_k(0, x); }
-double boost_bessel_I0(double x) { return boost::math::cyl_bessel_i(0, x); }
-double boost_bessel_J0(double x) { return boost::math::cyl_bessel_j(0, x); }
-double boost_bessel_j0(double x) { return boost::math::sph_bessel(0, x); }
-double boost_bessel_y0(double x) { return boost::math::sph_neumann(0, x); }
-
 int main(int argc, char *argv[]) {
-    std::unordered_map<std::string, fun_1d> gsl_funs = {{"tgamma", gsl_sf_gamma},
-                                                        {"lgamma", gsl_sf_lngamma},
-                                                        {"bessel_Y0", gsl_sf_bessel_Y0},
-                                                        {"bessel_I0", gsl_sf_bessel_I0},
-                                                        {"bessel_J0", gsl_sf_bessel_J0},
-                                                        {"bessel_K0", gsl_sf_bessel_K0},
-                                                        {"bessel_j0", gsl_sf_bessel_j0},
-                                                        {"bessel_y0", gsl_sf_bessel_y0}
+    std::unordered_map<std::string, fun_1d> gsl_funs = {
+        {"tgamma", gsl_sf_gamma},
+        {"lgamma", gsl_sf_lngamma},
+        {"bessel_Y0", gsl_sf_bessel_Y0},
+        {"bessel_Y1", gsl_sf_bessel_Y1},
+        {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
+        {"bessel_I0", gsl_sf_bessel_I0},
+        {"bessel_I1", gsl_sf_bessel_I1},
+        {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
+        {"bessel_J0", gsl_sf_bessel_J0},
+        {"bessel_J1", gsl_sf_bessel_J1},
+        {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
+        {"bessel_K0", gsl_sf_bessel_K0},
+        {"bessel_K1", gsl_sf_bessel_K1},
+        {"bessel_K2", [](double x) -> double { return gsl_sf_bessel_Kn(2, x); }},
+        {"bessel_j0", gsl_sf_bessel_j0},
+        {"bessel_j1", gsl_sf_bessel_j1},
+        {"bessel_j2", gsl_sf_bessel_j2},
+        {"bessel_y0", gsl_sf_bessel_y0},
+        {"bessel_y1", gsl_sf_bessel_y1},
+        {"bessel_y2", gsl_sf_bessel_y2},
+        {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
+        {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
+        {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
+        {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
     };
-    std::unordered_map<std::string, fun_1d> boost_funs = {{"tgamma", boost::math::tgamma<double>},
-                                                          {"lgamma", boost::math::lgamma},
-                                                          {"erf", boost::math::erf},
-                                                          {"erfc", boost::math::erfc},
-                                                          {"bessel_Y0", boost_bessel_Y0},
-                                                          {"bessel_I0", boost_bessel_I0},
-                                                          {"bessel_J0", boost_bessel_J0},
-                                                          {"bessel_K0", boost_bessel_K0},
-                                                          {"bessel_j0", boost_bessel_j0},
-                                                          {"bessel_y0", boost_bessel_y0},
+    std::unordered_map<std::string, fun_1d> boost_funs = {
+        {"tgamma", [](double x) -> double { return boost::math::tgamma<double>(x); }},
+        {"lgamma", [](double x) -> double { return boost::math::lgamma<double>(x); }},
+        {"erf", [](double x) -> double { return boost::math::erf(x); }},
+        {"erfc", [](double x) -> double { return boost::math::erfc(x); }},
+        {"bessel_Y0", [](double x) -> double { return boost::math::cyl_neumann(0, x); }},
+        {"bessel_Y1", [](double x) -> double { return boost::math::cyl_neumann(1, x); }},
+        {"bessel_Y2", [](double x) -> double { return boost::math::cyl_neumann(2, x); }},
+        {"bessel_I0", [](double x) -> double { return boost::math::cyl_bessel_i(0, x); }},
+        {"bessel_I1", [](double x) -> double { return boost::math::cyl_bessel_i(1, x); }},
+        {"bessel_I2", [](double x) -> double { return boost::math::cyl_bessel_i(2, x); }},
+        {"bessel_J0", [](double x) -> double { return boost::math::cyl_bessel_j(0, x); }},
+        {"bessel_J1", [](double x) -> double { return boost::math::cyl_bessel_j(1, x); }},
+        {"bessel_J2", [](double x) -> double { return boost::math::cyl_bessel_j(2, x); }},
+        {"bessel_K0", [](double x) -> double { return boost::math::cyl_bessel_k(0, x); }},
+        {"bessel_K1", [](double x) -> double { return boost::math::cyl_bessel_k(1, x); }},
+        {"bessel_K2", [](double x) -> double { return boost::math::cyl_bessel_k(2, x); }},
+        {"bessel_j0", [](double x) -> double { return boost::math::sph_bessel(0, x); }},
+        {"bessel_j1", [](double x) -> double { return boost::math::sph_bessel(1, x); }},
+        {"bessel_j2", [](double x) -> double { return boost::math::sph_bessel(2, x); }},
+        {"bessel_y0", [](double x) -> double { return boost::math::sph_neumann(0, x); }},
+        {"bessel_y1", [](double x) -> double { return boost::math::sph_neumann(1, x); }},
+        {"bessel_y2", [](double x) -> double { return boost::math::sph_neumann(2, x); }},
+        {"hermite_0", [](double x) -> double { return boost::math::hermite(0, x); }},
+        {"hermite_1", [](double x) -> double { return boost::math::hermite(1, x); }},
+        {"hermite_2", [](double x) -> double { return boost::math::hermite(2, x); }},
+        {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
     };
-    std::unordered_map<std::string, fun_1d> std_funs = {{"tgamma", std::tgamma},
-                                                        {"lgamma", std::lgamma},
-                                                        {"erf", std::erf},
-                                                        {"erfc", std::erfc},
+    std::unordered_map<std::string, fun_1d> std_funs = {
+        {"tgamma", [](double x) -> double { return std::tgamma(x); }},
+        {"lgamma", [](double x) -> double { return std::lgamma(x); }},
+        {"erf", [](double x) -> double { return std::erf(x); }},
+        {"erfc", [](double x) -> double { return std::erfc(x); }},
     };
     std::unordered_map<std::string, fun_1d> sctl_funs;
     std::unordered_map<std::string, fun_1d> sleef_funs;
