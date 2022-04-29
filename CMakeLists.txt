@@ -4,6 +4,7 @@ project(
   LANGUAGES C CXX
   )
 include(ExternalProject)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package(GSL REQUIRED)
 find_package(Boost)

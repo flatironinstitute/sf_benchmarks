@@ -26,7 +26,9 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
     return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
 }
 
+typedef sctl::Vec<double, 4> sctl_dx4;
 typedef std::function<double(double)> fun_1d;
+typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> fun_1d_dx4;
 
 class BenchResult {
   public:
@@ -73,6 +75,29 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     const struct timespec st = get_wtime();
     for (std::size_t i = 0; i < vals.size(); ++i)
         res[i] = f(vals[i]);
+    const struct timespec ft = get_wtime();
+
+    res.eval_time = get_wtime_diff(&st, &ft);
+
+    return res;
+}
+
+BenchResult test_func(const std::string name, const std::string library_prefix,
+                      const std::unordered_map<std::string, fun_1d_dx4> funs, const std::vector<double> &vals) {
+    const std::string label = library_prefix + "_" + name;
+    if (!funs.count(name))
+        return BenchResult(label);
+
+    const fun_1d_dx4 &f = funs.at(name);
+    BenchResult res(label, vals.size());
+
+    const struct timespec st = get_wtime();
+    for (std::size_t i = 0; i < vals.size(); i += 4) {
+        sctl_dx4 x, y;
+        x = sctl_dx4::Load(vals.data() + i);
+        y = f(x.get());
+        y.Store(res.res.data() + i);
+    }
     const struct timespec ft = get_wtime();
 
     res.eval_time = get_wtime_diff(&st, &ft);
@@ -167,7 +192,6 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return std::pow(x, 3.5); }},
         {"pow13", [](double x) -> double { return std::pow(x, 13); }},
     };
-    std::unordered_map<std::string, fun_1d> sctl_funs;
     std::unordered_map<std::string, fun_1d> sleef_funs = {
         {"sin_pi", Sleef_sinpid1_u05purecfma},
         {"cos_pi", Sleef_cospid1_u05purecfma},
@@ -187,6 +211,9 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); }},
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
+    std::unordered_map<std::string, fun_1d_dx4> sctl_funs_dx4 = {
+        {"exp", sctl::exp_intrin<sctl_dx4::VData>},
+    };
 
     std::unordered_set<std::string> fun_union;
     for (auto kv : gsl_funs)
@@ -195,7 +222,7 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : std_funs)
         fun_union.insert(kv.first);
-    for (auto kv : sctl_funs)
+    for (auto kv : sctl_funs_dx4)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs)
         fun_union.insert(kv.first);
@@ -210,7 +237,9 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
-        std::cout << test_func(key, "sctl", sctl_funs, vals) << std::endl;
+        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
         std::cout << "\n";
     }
+
+    return 0;
 }
