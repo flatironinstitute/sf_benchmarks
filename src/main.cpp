@@ -140,6 +140,7 @@ enum OPS {
     RSQRT
 };
 }
+
 BenchResult test_func(const std::string name, const std::string library_prefix,
                       const std::unordered_map<std::string, OPS::OPS> funs, const std::vector<double> &vals) {
     Eigen::Map<const Eigen::ArrayXd> x(vals.data(), vals.size());
@@ -163,7 +164,7 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
         res_eigen = x.sin();
         break;
     case OPS::TAN:
-        res_eigen = x.tanh();
+        res_eigen = x.tan();
         break;
     case OPS::COSH:
         res_eigen = x.cosh();
@@ -253,6 +254,8 @@ int main(int argc, char *argv[]) {
         {"cos_pi", gsl_sf_cos_pi},
         {"sin", gsl_sf_sin},
         {"cos", gsl_sf_cos},
+        {"sinc", gsl_sf_sinc},
+        {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(M_PI * x); }},
         {"erf", gsl_sf_erf},
         {"erfc", gsl_sf_erfc},
         {"tgamma", gsl_sf_gamma},
@@ -289,9 +292,11 @@ int main(int argc, char *argv[]) {
         {"cos_pi", [](double x) -> double { return boost::math::cos_pi(x); }},
         {"tgamma", [](double x) -> double { return boost::math::tgamma<double>(x); }},
         {"lgamma", [](double x) -> double { return boost::math::lgamma<double>(x); }},
+        {"digamma", [](double x) -> double { return boost::math::digamma<double>(x); }},
         {"pow13", [](double x) -> double { return boost::math::pow<13>(x); }},
         {"erf", [](double x) -> double { return boost::math::erf(x); }},
         {"erfc", [](double x) -> double { return boost::math::erfc(x); }},
+        {"sinc_pi", [](double x) -> double { return boost::math::sinc_pi(x); }},
         {"bessel_Y0", [](double x) -> double { return boost::math::cyl_neumann(0, x); }},
         {"bessel_Y1", [](double x) -> double { return boost::math::cyl_neumann(1, x); }},
         {"bessel_Y2", [](double x) -> double { return boost::math::cyl_neumann(2, x); }},
@@ -322,9 +327,21 @@ int main(int argc, char *argv[]) {
         {"lgamma", [](double x) -> double { return std::lgamma(x); }},
         {"sin", [](double x) -> double { return std::sin(x); }},
         {"cos", [](double x) -> double { return std::cos(x); }},
+        {"tan", [](double x) -> double { return std::tan(x); }},
+        {"asin", [](double x) -> double { return std::asin(x); }},
+        {"acos", [](double x) -> double { return std::acos(x); }},
+        {"atan", [](double x) -> double { return std::atan(x); }},
+        {"asin", [](double x) -> double { return std::asin(x); }},
+        {"acos", [](double x) -> double { return std::acos(x); }},
+        {"atan", [](double x) -> double { return std::atan(x); }},
+        {"sinh", [](double x) -> double { return std::sinh(x); }},
+        {"cosh", [](double x) -> double { return std::cosh(x); }},
+        {"tanh", [](double x) -> double { return std::tanh(x); }},
+        {"asinh", [](double x) -> double { return std::asinh(x); }},
+        {"acosh", [](double x) -> double { return std::acosh(x); }},
+        {"atanh", [](double x) -> double { return std::atanh(x); }},
         {"sin_pi", [](double x) -> double { return std::sin(M_PI * x); }},
         {"cos_pi", [](double x) -> double { return std::cos(M_PI * x); }},
-        {"tan", [](double x) -> double { return std::tan(x); }},
         {"erf", [](double x) -> double { return std::erf(x); }},
         {"erfc", [](double x) -> double { return std::erfc(x); }},
         {"log", [](double x) -> double { return std::log(x); }},
@@ -344,6 +361,15 @@ int main(int argc, char *argv[]) {
         {"sin", Sleef_sind1_u10purecfma},
         {"cos", Sleef_cosd1_u10purecfma},
         {"tan", Sleef_tand1_u10purecfma},
+        {"sinh", Sleef_sinhd1_u10purecfma},
+        {"cosh", Sleef_coshd1_u10purecfma},
+        {"tanh", Sleef_tanhd1_u10purecfma},
+        {"asin", Sleef_asind1_u10purecfma},
+        {"acos", Sleef_acosd1_u10purecfma},
+        {"atan", Sleef_atand1_u10purecfma},
+        {"asinh", Sleef_asinhd1_u10purecfma},
+        {"acosh", Sleef_acoshd1_u10purecfma},
+        {"atanh", Sleef_atanhd1_u10purecfma},
         {"log", Sleef_logd1_u10purecfma},
         {"log", Sleef_log2d1_u10purecfma},
         {"log10", Sleef_log10d1_u10purecfma},
@@ -362,12 +388,12 @@ int main(int argc, char *argv[]) {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
-        {"sin", OPS::SIN},     {"cos", OPS::COS},      {"tan", OPS::TAN},       {"sinh", OPS::SINH},
-        {"cosh", OPS::COSH},   {"tanh", OPS::TANH},    {"exp", OPS::EXP},       {"log", OPS::LOG},
-        {"log10", OPS::LOG10}, {"pow3.5", OPS::POW35}, {"pow13", OPS::POW13},   {"asin", OPS::ASIN},
-        {"acos", OPS::ACOS},   {"atan", OPS::ATAN},    {"asinh", OPS::ASINH},   {"atanh", OPS::ACOSH},
-        {"erf", OPS::ERF},     {"erfc", OPS::ERFC},    {"lgamma", OPS::LGAMMA}, {"digamma", OPS::DIGAMMA},
-        {"ndtri", OPS::NDTRI}, {"sqrt", OPS::SQRT},    {"rsqrt", OPS::RSQRT},
+        {"sin", OPS::SIN},         {"cos", OPS::COS},      {"tan", OPS::TAN},     {"sinh", OPS::SINH},
+        {"cosh", OPS::COSH},       {"tanh", OPS::TANH},    {"exp", OPS::EXP},     {"log", OPS::LOG},
+        {"log10", OPS::LOG10},     {"pow3.5", OPS::POW35}, {"pow13", OPS::POW13}, {"asin", OPS::ASIN},
+        {"acos", OPS::ACOS},       {"atan", OPS::ATAN},    {"asinh", OPS::ASINH}, {"atanh", OPS::ATANH},
+        {"acosh", OPS::ACOSH},     {"erf", OPS::ERF},      {"erfc", OPS::ERFC},   {"lgamma", OPS::LGAMMA},
+        {"digamma", OPS::DIGAMMA}, {"ndtri", OPS::NDTRI},  {"sqrt", OPS::SQRT},   {"rsqrt", OPS::RSQRT},
     };
 
     std::set<std::string> fun_union;
