@@ -3,9 +3,9 @@
 #include <iomanip>
 #include <ios>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <unordered_map>
-#include <unordered_set>
 
 #include <Eigen/Core>
 #include <boost/math/special_functions.hpp>
@@ -231,7 +231,17 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     return res;
 }
 
+std::set<std::string> parse_args(int argc, char *argv[]) {
+    std::set<std::string> res;
+    for (int i = 0; i < argc; ++i)
+        res.insert(argv[i]);
+
+    return res;
+}
+
 int main(int argc, char *argv[]) {
+
+    std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
     std::unordered_map<std::string, fun_1d> gsl_funs = {
         {"sin_pi", gsl_sf_sin_pi},
@@ -307,6 +317,8 @@ int main(int argc, char *argv[]) {
         {"lgamma", [](double x) -> double { return std::lgamma(x); }},
         {"sin", [](double x) -> double { return std::sin(x); }},
         {"cos", [](double x) -> double { return std::cos(x); }},
+        {"sin_pi", [](double x) -> double { return std::sin(M_PI * x); }},
+        {"cos_pi", [](double x) -> double { return std::cos(M_PI * x); }},
         {"tan", [](double x) -> double { return std::tan(x); }},
         {"erf", [](double x) -> double { return std::erf(x); }},
         {"erfc", [](double x) -> double { return std::erfc(x); }},
@@ -353,7 +365,7 @@ int main(int argc, char *argv[]) {
         {"ndtri", OPS::NDTRI}, {"sqrt", OPS::SQRT},    {"rsqrt", OPS::RSQRT},
     };
 
-    std::unordered_set<std::string> fun_union;
+    std::set<std::string> fun_union;
     for (auto kv : gsl_funs)
         fun_union.insert(kv.first);
     for (auto kv : boost_funs)
@@ -367,12 +379,19 @@ int main(int argc, char *argv[]) {
     for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
 
+    std::set<std::string> keys_to_eval;
+    if (input_keys.size() > 0)
+        std::set_intersection(fun_union.begin(), fun_union.end(), input_keys.begin(), input_keys.end(),
+                              std::inserter(keys_to_eval, keys_to_eval.end()));
+    else
+        keys_to_eval = fun_union;
+
     std::vector<double> vals(1000000);
     srand(100);
     for (auto &val : vals)
         val = rand() / (double)RAND_MAX;
 
-    for (auto key : fun_union) {
+    for (auto key : keys_to_eval) {
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
