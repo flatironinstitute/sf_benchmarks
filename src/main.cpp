@@ -73,6 +73,11 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     const fun_1d &f = funs.at(name);
     BenchResult res(label, vals.size());
 
+    // Load a big thing to clear cache. No idea why compiler isn't optimizing this away.
+    std::vector<char> c(200 * 1024 * 1024);
+    for (int j = 0; j < c.size(); j++)
+        c[j] = j;
+
     const struct timespec st = get_wtime();
     for (std::size_t i = 0; i < vals.size(); ++i)
         res[i] = f(vals[i]);
