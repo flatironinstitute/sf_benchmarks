@@ -28,10 +28,14 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
 }
 
 typedef sctl::Vec<double, 4> sctl_dx4;
+typedef sctl::Vec<double, 8> sctl_dx8;
 typedef std::function<double(double)> fun_1d;
 typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_1d_dx4;
+typedef std::function<sctl_dx8::VData(const sctl_dx4::VData &)> sctl_fun_1d_dx8;
 typedef __m256d sleef_dx4;
+typedef __m512d sleef_dx8;
 typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_1d_dx4;
+typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_1d_dx8;
 
 class BenchResult {
   public:
@@ -126,6 +130,27 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     for (std::size_t i = 0; i < vals.size(); i += 4) {
         sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
         _mm256_store_pd(res.res.data() + i, f(x.get().v));
+    }
+    const struct timespec ft = get_wtime();
+
+    res.eval_time = get_wtime_diff(&st, &ft);
+
+    return res;
+}
+
+BenchResult test_func(const std::string name, const std::string library_prefix,
+                      const std::unordered_map<std::string, sleef_fun_1d_dx8> funs, const std::vector<double> &vals) {
+    const std::string label = library_prefix + "_" + name;
+    if (!funs.count(name))
+        return BenchResult(label);
+
+    const sleef_fun_1d_dx8 &f = funs.at(name);
+    BenchResult res(label, vals.size());
+
+    const struct timespec st = get_wtime();
+    for (std::size_t i = 0; i < vals.size(); i += 8) {
+        sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
+        _mm512_store_pd(res.res.data() + i, f(x.get().v));
     }
     const struct timespec ft = get_wtime();
 
@@ -433,6 +458,33 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{3.5}); }},
         {"pow13", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{13}); }},
     };
+    std::unordered_map<std::string, sleef_fun_1d_dx8> sleef_funs_dx8 = {
+        {"sin", Sleef_sind8_u10avx512f},
+        {"cos", Sleef_cosd8_u10avx512f},
+        {"tan", Sleef_tand8_u10avx512f},
+        {"sinh", Sleef_sinhd8_u10avx512f},
+        {"cosh", Sleef_coshd8_u10avx512f},
+        {"tanh", Sleef_tanhd8_u10avx512f},
+        {"asin", Sleef_asind8_u10avx512f},
+        {"acos", Sleef_acosd8_u10avx512f},
+        {"atan", Sleef_atand8_u10avx512f},
+        {"asinh", Sleef_asinhd8_u10avx512f},
+        {"acosh", Sleef_acoshd8_u10avx512f},
+        {"atanh", Sleef_atanhd8_u10avx512f},
+        {"log", Sleef_logd8_u10avx512f},
+        {"log", Sleef_log2d8_u10avx512f},
+        {"log10", Sleef_log10d8_u10avx512f},
+        {"exp", Sleef_expd8_u10avx512f},
+        {"exp2", Sleef_exp2d8_u10avx512f},
+        {"exp10", Sleef_exp10d8_u10avx512f},
+        {"erf", Sleef_erfd8_u10avx512f},
+        {"erfc", Sleef_erfcd8_u15avx512f},
+        {"lgamma", Sleef_lgammad8_u10avx512f},
+        {"tgamma", Sleef_tgammad8_u10avx512f},
+        {"sqrt", Sleef_sqrtd8_u05avx512f},
+        {"pow3.5", [](sleef_dx8 x) -> sleef_dx8 { return Sleef_powd8_u10avx512f(x, sleef_dx8{3.5}); }},
+        {"pow13", [](sleef_dx8 x) -> sleef_dx8 { return Sleef_powd8_u10avx512f(x, sleef_dx8{13}); }},
+    };
     std::unordered_map<std::string, sctl_fun_1d_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
@@ -458,6 +510,8 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs_dx4)
         fun_union.insert(kv.first);
+    for (auto kv : sleef_funs_dx8)
+        fun_union.insert(kv.first);
     for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
 
@@ -478,6 +532,7 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
+        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "eigen", eigen_funs, vals);
