@@ -29,7 +29,9 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
 
 typedef sctl::Vec<double, 4> sctl_dx4;
 typedef std::function<double(double)> fun_1d;
-typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> fun_1d_dx4;
+typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_1d_dx4;
+typedef __m256d sleef_dx4;
+typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_1d_dx4;
 
 class BenchResult {
   public:
@@ -89,12 +91,12 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
 }
 
 BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, fun_1d_dx4> funs, const std::vector<double> &vals) {
+                      const std::unordered_map<std::string, sctl_fun_1d_dx4> funs, const std::vector<double> &vals) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult(label);
 
-    const fun_1d_dx4 &f = funs.at(name);
+    const sctl_fun_1d_dx4 &f = funs.at(name);
     BenchResult res(label, vals.size());
 
     const struct timespec st = get_wtime();
@@ -103,6 +105,27 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
         x = sctl_dx4::Load(vals.data() + i);
         y = f(x.get());
         y.Store(res.res.data() + i);
+    }
+    const struct timespec ft = get_wtime();
+
+    res.eval_time = get_wtime_diff(&st, &ft);
+
+    return res;
+}
+
+BenchResult test_func(const std::string name, const std::string library_prefix,
+                      const std::unordered_map<std::string, sleef_fun_1d_dx4> funs, const std::vector<double> &vals) {
+    const std::string label = library_prefix + "_" + name;
+    if (!funs.count(name))
+        return BenchResult(label);
+
+    const sleef_fun_1d_dx4 &f = funs.at(name);
+    BenchResult res(label, vals.size());
+
+    const struct timespec st = get_wtime();
+    for (std::size_t i = 0; i < vals.size(); i += 4) {
+        sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
+        _mm256_store_pd(res.res.data() + i, f(x.get().v));
     }
     const struct timespec ft = get_wtime();
 
@@ -246,7 +269,6 @@ std::set<std::string> parse_args(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
     std::unordered_map<std::string, fun_1d> gsl_funs = {
@@ -384,7 +406,34 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); }},
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
-    std::unordered_map<std::string, fun_1d_dx4> sctl_funs_dx4 = {
+    std::unordered_map<std::string, sleef_fun_1d_dx4> sleef_funs_dx4 = {
+        {"sin", Sleef_sind4_u10avx2},
+        {"cos", Sleef_cosd4_u10avx2},
+        {"tan", Sleef_tand4_u10avx2},
+        {"sinh", Sleef_sinhd4_u10avx2},
+        {"cosh", Sleef_coshd4_u10avx2},
+        {"tanh", Sleef_tanhd4_u10avx2},
+        {"asin", Sleef_asind4_u10avx2},
+        {"acos", Sleef_acosd4_u10avx2},
+        {"atan", Sleef_atand4_u10avx2},
+        {"asinh", Sleef_asinhd4_u10avx2},
+        {"acosh", Sleef_acoshd4_u10avx2},
+        {"atanh", Sleef_atanhd4_u10avx2},
+        {"log", Sleef_logd4_u10avx2},
+        {"log", Sleef_log2d4_u10avx2},
+        {"log10", Sleef_log10d4_u10avx2},
+        {"exp", Sleef_expd4_u10avx2},
+        {"exp2", Sleef_exp2d4_u10avx2},
+        {"exp10", Sleef_exp10d4_u10avx2},
+        {"erf", Sleef_erfd4_u10avx2},
+        {"erfc", Sleef_erfcd4_u15avx2},
+        {"lgamma", Sleef_lgammad4_u10avx2},
+        {"tgamma", Sleef_tgammad4_u10avx2},
+        {"sqrt", Sleef_sqrtd4_u05avx2},
+        {"pow3.5", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{3.5}); }},
+        {"pow13", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{13}); }},
+    };
+    std::unordered_map<std::string, sctl_fun_1d_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
@@ -407,6 +456,8 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs)
         fun_union.insert(kv.first);
+    for (auto kv : sleef_funs_dx4)
+        fun_union.insert(kv.first);
     for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
 
@@ -426,6 +477,7 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
+        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "eigen", eigen_funs, vals);
