@@ -29,7 +29,7 @@ ExternalProject_Add(libbaobzi
              -DBAOBZI_BUILD_SHARED=OFF -DBAOBZI_BUILD_EXAMPLES=OFF -DBAOBZI_BUILD_STATIC=ON
 )
 
-include_directories(${CMAKE_BINARY_DIR}/contrib/include ${PROJECT_SOURCE_DIR}/extern/SCTL/include)
+include_directories(${CMAKE_BINARY_DIR}/contrib/include ${PROJECT_SOURCE_DIR}/extern/SCTL/include ${PROJECT_SOURCE_DIR}/extern/eigen/)
 link_directories(${CMAKE_BINARY_DIR}/contrib/lib64)
 
 file(GLOB SF_SOURCES "src/*.cpp")

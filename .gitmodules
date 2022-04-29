@@ -7,3 +7,6 @@
 [submodule "extern/SCTL"]
 	path = extern/SCTL
 	url = https://github.com/dmalhotra/SCTL.git
+[submodule "extern/eigen"]
+	path = extern/eigen
+	url = https://gitlab.com/libeigen/eigen.git

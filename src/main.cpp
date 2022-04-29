@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <Eigen/Core>
 #include <boost/math/special_functions.hpp>
 #include <cmath>
 #include <gsl/gsl_sf.h>
@@ -210,6 +211,6 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "sctl", sctl_funs, vals) << std::endl;
-        std::cout << "\n\n";
+        std::cout << "\n";
     }
 }
