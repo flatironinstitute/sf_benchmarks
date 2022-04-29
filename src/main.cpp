@@ -13,6 +13,7 @@
 #include <gsl/gsl_sf.h>
 #include <sctl.hpp>
 #include <sleef.h>
+#include <unsupported/Eigen/SpecialFunctions>
 
 #include <time.h>
 
@@ -105,7 +106,124 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     return res;
 }
 
+namespace OPS {
+enum OPS {
+    COS,
+    SIN,
+    TAN,
+    COSH,
+    SINH,
+    TANH,
+    EXP,
+    LOG,
+    LOG10,
+    POW35,
+    POW13,
+    ASIN,
+    ACOS,
+    ATAN,
+    ASINH,
+    ACOSH,
+    ATANH,
+    ERF,
+    ERFC,
+    LGAMMA,
+    DIGAMMA,
+    NDTRI,
+};
+}
+BenchResult test_func(const std::string name, const std::string library_prefix,
+                      const std::unordered_map<std::string, OPS::OPS> funs, const std::vector<double> &vals) {
+    Eigen::Map<const Eigen::ArrayXd> x(vals.data(), vals.size());
+
+    const std::string label = library_prefix + "_" + name;
+    if (!funs.count(name))
+        return BenchResult(label);
+
+    BenchResult res(label, vals.size());
+
+    Eigen::Map<Eigen::VectorXd> res_eigen(res.res.data(), vals.size());
+
+    OPS::OPS OP = funs.at(name);
+    const struct timespec st = get_wtime();
+
+    switch (OP) {
+    case OPS::COS:
+        res_eigen = x.cos();
+        break;
+    case OPS::SIN:
+        res_eigen = x.sin();
+        break;
+    case OPS::TAN:
+        res_eigen = x.tanh();
+        break;
+    case OPS::COSH:
+        res_eigen = x.cosh();
+        break;
+    case OPS::SINH:
+        res_eigen = x.sinh();
+        break;
+    case OPS::TANH:
+        res_eigen = x.tanh();
+        break;
+    case OPS::EXP:
+        res_eigen = x.exp();
+        break;
+    case OPS::LOG:
+        res_eigen = x.log();
+        break;
+    case OPS::LOG10:
+        res_eigen = x.log10();
+        break;
+    case OPS::POW35:
+        res_eigen = x.pow(3.5);
+        break;
+    case OPS::POW13:
+        res_eigen = x.pow(13);
+        break;
+    case OPS::ASIN:
+        res_eigen = x.asin();
+        break;
+    case OPS::ACOS:
+        res_eigen = x.acos();
+        break;
+    case OPS::ATAN:
+        res_eigen = x.atan();
+        break;
+    case OPS::ASINH:
+        res_eigen = x.asinh();
+        break;
+    case OPS::ACOSH:
+        res_eigen = x.acosh();
+        break;
+    case OPS::ATANH:
+        res_eigen = x.atanh();
+        break;
+    case OPS::ERF:
+        res_eigen = x.erf();
+        break;
+    case OPS::ERFC:
+        res_eigen = x.erfc();
+        break;
+    case OPS::LGAMMA:
+        res_eigen = x.lgamma();
+        break;
+    case OPS::DIGAMMA:
+        res_eigen = x.digamma();
+        break;
+    case OPS::NDTRI:
+        res_eigen = x.ndtri();
+        break;
+    }
+
+    const struct timespec ft = get_wtime();
+    res.eval_time = get_wtime_diff(&st, &ft);
+
+    return res;
+}
+
 int main(int argc, char *argv[]) {
+
     std::unordered_map<std::string, fun_1d> gsl_funs = {
         {"sin_pi", gsl_sf_sin_pi},
         {"cos_pi", gsl_sf_cos_pi},
@@ -214,6 +332,14 @@ int main(int argc, char *argv[]) {
     std::unordered_map<std::string, fun_1d_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
+    std::unordered_map<std::string, OPS::OPS> eigen_funs = {
+        {"sin", OPS::SIN},     {"cos", OPS::COS},      {"tan", OPS::TAN},       {"sinh", OPS::SINH},
+        {"cosh", OPS::COSH},   {"tanh", OPS::TANH},    {"exp", OPS::EXP},       {"log", OPS::LOG},
+        {"log10", OPS::LOG10}, {"pow3.5", OPS::POW35}, {"pow13", OPS::POW13},   {"asin", OPS::ASIN},
+        {"acos", OPS::ACOS},   {"atan", OPS::ATAN},    {"asinh", OPS::ASINH},   {"atanh", OPS::ACOSH},
+        {"erf", OPS::ERF},     {"erfc", OPS::ERFC},    {"lgamma", OPS::LGAMMA}, {"digamma", OPS::DIGAMMA},
+        {"ndtri", OPS::NDTRI},
+    };
 
     std::unordered_set<std::string> fun_union;
     for (auto kv : gsl_funs)
@@ -225,6 +351,8 @@ int main(int argc, char *argv[]) {
     for (auto kv : sctl_funs_dx4)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs)
+        fun_union.insert(kv.first);
+    for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
 
     std::vector<double> vals(1000000);
@@ -238,7 +366,8 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
-        std::cout << "\n";
+        std::cout << test_func(key, "eigen", eigen_funs, vals);
+        std::cout << "\n\n";
     }
 
     return 0;
