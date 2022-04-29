@@ -106,6 +106,7 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
     return res;
 }
 
+// https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
 namespace OPS {
 enum OPS {
     COS,
@@ -130,6 +131,8 @@ enum OPS {
     LGAMMA,
     DIGAMMA,
     NDTRI,
+    SQRT,
+    RSQRT
 };
 }
 BenchResult test_func(const std::string name, const std::string library_prefix,
@@ -213,6 +216,12 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
         break;
     case OPS::NDTRI:
         res_eigen = x.ndtri();
+        break;
+    case OPS::SQRT:
+        res_eigen = x.sqrt();
+        break;
+    case OPS::RSQRT:
+        res_eigen = x.rsqrt();
         break;
     }
 
@@ -307,6 +316,8 @@ int main(int argc, char *argv[]) {
         {"exp", [](double x) -> double { return std::exp(x); }},
         {"exp2", [](double x) -> double { return std::exp2(x); }},
         {"exp10", [](double x) -> double { return exp10(x); }},
+        {"sqrt", [](double x) -> double { return std::sqrt(x); }},
+        {"rsqrt", [](double x) -> double { return 1.0 / std::sqrt(x); }},
         {"pow3.5", [](double x) -> double { return std::pow(x, 3.5); }},
         {"pow13", [](double x) -> double { return std::pow(x, 13); }},
     };
@@ -326,6 +337,7 @@ int main(int argc, char *argv[]) {
         {"erfc", Sleef_erfcd1_u15purecfma},
         {"lgamma", Sleef_lgammad1_u10purecfma},
         {"tgamma", Sleef_tgammad1_u10purecfma},
+        {"sqrt", Sleef_sqrtd1_u05purecfma},
         {"pow3.5", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); }},
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
@@ -338,7 +350,7 @@ int main(int argc, char *argv[]) {
         {"log10", OPS::LOG10}, {"pow3.5", OPS::POW35}, {"pow13", OPS::POW13},   {"asin", OPS::ASIN},
         {"acos", OPS::ACOS},   {"atan", OPS::ATAN},    {"asinh", OPS::ASINH},   {"atanh", OPS::ACOSH},
         {"erf", OPS::ERF},     {"erfc", OPS::ERFC},    {"lgamma", OPS::LGAMMA}, {"digamma", OPS::DIGAMMA},
-        {"ndtri", OPS::NDTRI},
+        {"ndtri", OPS::NDTRI}, {"sqrt", OPS::SQRT},    {"rsqrt", OPS::RSQRT},
     };
 
     std::unordered_set<std::string> fun_union;
