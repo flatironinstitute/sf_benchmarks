@@ -432,6 +432,8 @@ int main(int argc, char *argv[]) {
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
     std::unordered_map<std::string, sleef_fun_1d_dx4> sleef_funs_dx4 = {
+        {"sin_pi", Sleef_sinpid4_u05avx2},
+        {"cos_pi", Sleef_cospid4_u05avx2},
         {"sin", Sleef_sind4_u10avx2},
         {"cos", Sleef_cosd4_u10avx2},
         {"tan", Sleef_tand4_u10avx2},
@@ -459,6 +461,8 @@ int main(int argc, char *argv[]) {
         {"pow13", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{13}); }},
     };
     std::unordered_map<std::string, sleef_fun_1d_dx8> sleef_funs_dx8 = {
+        {"sin_pi", Sleef_sinpid8_u05avx512f},
+        {"cos_pi", Sleef_cospid8_u05avx512f},
         {"sin", Sleef_sind8_u10avx512f},
         {"cos", Sleef_cosd8_u10avx512f},
         {"tan", Sleef_tand8_u10avx512f},
