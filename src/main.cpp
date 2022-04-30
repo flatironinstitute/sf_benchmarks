@@ -5,6 +5,7 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <type_traits>
 #include <unordered_map>
 
 #include <Eigen/Core>
@@ -27,15 +28,16 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
     return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
 }
 
-typedef sctl::Vec<double, 4> sctl_dx4;
-typedef sctl::Vec<double, 8> sctl_dx8;
-typedef std::function<double(double)> fun_1d;
-typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_1d_dx4;
-typedef std::function<sctl_dx8::VData(const sctl_dx4::VData &)> sctl_fun_1d_dx8;
 typedef __m256d sleef_dx4;
 typedef __m512d sleef_dx8;
-typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_1d_dx4;
-typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_1d_dx8;
+typedef sctl::Vec<double, 4> sctl_dx4;
+typedef sctl::Vec<double, 8> sctl_dx8;
+
+typedef std::function<double(double)> fun_dx1;
+typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_dx4;
+typedef std::function<sctl_dx8::VData(const sctl_dx4::VData &)> sctl_fun_dx8;
+typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_dx4;
+typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_dx8;
 
 class BenchResult {
   public:
@@ -70,14 +72,15 @@ std::ostream &operator<<(std::ostream &os, const BenchResult &br) {
     return os;
 }
 
+template <typename FUN_T>
 BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, fun_1d> funs, const std::vector<double> &vals) {
+                      const std::unordered_map<std::string, FUN_T> funs, const std::vector<double> &vals) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult(label);
 
-    const fun_1d &f = funs.at(name);
     BenchResult res(label, vals.size());
+    const FUN_T &f = funs.at(name);
 
     // Load a big thing to clear cache. No idea why compiler isn't optimizing this away.
     std::vector<char> c(200 * 1024 * 1024);
@@ -85,72 +88,29 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
         c[j] = j;
 
     const struct timespec st = get_wtime();
-    for (std::size_t i = 0; i < vals.size(); ++i)
-        res[i] = f(vals[i]);
-    const struct timespec ft = get_wtime();
-
-    res.eval_time = get_wtime_diff(&st, &ft);
-
-    return res;
-}
-
-BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, sctl_fun_1d_dx4> funs, const std::vector<double> &vals) {
-    const std::string label = library_prefix + "_" + name;
-    if (!funs.count(name))
-        return BenchResult(label);
-
-    const sctl_fun_1d_dx4 &f = funs.at(name);
-    BenchResult res(label, vals.size());
-
-    const struct timespec st = get_wtime();
-    for (std::size_t i = 0; i < vals.size(); i += 4) {
-        sctl_dx4 x, y;
-        x = sctl_dx4::Load(vals.data() + i);
-        y = f(x.get());
-        y.Store(res.res.data() + i);
-    }
-    const struct timespec ft = get_wtime();
-
-    res.eval_time = get_wtime_diff(&st, &ft);
-
-    return res;
-}
-
-BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, sleef_fun_1d_dx4> funs, const std::vector<double> &vals) {
-    const std::string label = library_prefix + "_" + name;
-    if (!funs.count(name))
-        return BenchResult(label);
-
-    const sleef_fun_1d_dx4 &f = funs.at(name);
-    BenchResult res(label, vals.size());
-
-    const struct timespec st = get_wtime();
-    for (std::size_t i = 0; i < vals.size(); i += 4) {
-        sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
-        _mm256_store_pd(res.res.data() + i, f(x.get().v));
-    }
-    const struct timespec ft = get_wtime();
-
-    res.eval_time = get_wtime_diff(&st, &ft);
-
-    return res;
-}
-
-BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, sleef_fun_1d_dx8> funs, const std::vector<double> &vals) {
-    const std::string label = library_prefix + "_" + name;
-    if (!funs.count(name))
-        return BenchResult(label);
-
-    const sleef_fun_1d_dx8 &f = funs.at(name);
-    BenchResult res(label, vals.size());
-
-    const struct timespec st = get_wtime();
-    for (std::size_t i = 0; i < vals.size(); i += 8) {
-        sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
-        _mm512_store_pd(res.res.data() + i, f(x.get().v));
+    if constexpr (std::is_same_v<FUN_T, fun_dx1>) {
+        for (std::size_t i = 0; i < vals.size(); ++i)
+            res[i] = f(vals[i]);
+    } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
+        for (std::size_t i = 0; i < vals.size(); i += 4) {
+            sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
+            sctl_dx4(f(x.get())).Store(res.res.data() + i);
+        }
+    } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
+        for (std::size_t i = 0; i < vals.size(); i += 8) {
+            sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
+            sctl_dx8(f(x.get())).Store(res.res.data() + i);
+        }
+    } else if constexpr (std::is_same_v<FUN_T, sleef_fun_dx4>) {
+        for (std::size_t i = 0; i < vals.size(); i += 4) {
+            sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
+            _mm256_store_pd(res.res.data() + i, f(x.get().v));
+        }
+    } else if constexpr (std::is_same_v<FUN_T, sleef_fun_dx8>) {
+        for (std::size_t i = 0; i < vals.size(); i += 8) {
+            sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
+            _mm512_store_pd(res.res.data() + i, f(x.get().v));
+        }
     }
     const struct timespec ft = get_wtime();
 
@@ -189,6 +149,7 @@ enum OPS {
 };
 }
 
+template <>
 BenchResult test_func(const std::string name, const std::string library_prefix,
                       const std::unordered_map<std::string, OPS::OPS> funs, const std::vector<double> &vals) {
     Eigen::Map<const Eigen::ArrayXd> x(vals.data(), vals.size());
@@ -296,7 +257,7 @@ std::set<std::string> parse_args(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
-    std::unordered_map<std::string, fun_1d> gsl_funs = {
+    std::unordered_map<std::string, fun_dx1> gsl_funs = {
         {"sin_pi", gsl_sf_sin_pi},
         {"cos_pi", gsl_sf_cos_pi},
         {"sin", gsl_sf_sin},
@@ -334,7 +295,7 @@ int main(int argc, char *argv[]) {
         {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
         {"riemann_zeta", gsl_sf_zeta},
     };
-    std::unordered_map<std::string, fun_1d> boost_funs = {
+    std::unordered_map<std::string, fun_dx1> boost_funs = {
         {"sin_pi", [](double x) -> double { return boost::math::sin_pi(x); }},
         {"cos_pi", [](double x) -> double { return boost::math::cos_pi(x); }},
         {"tgamma", [](double x) -> double { return boost::math::tgamma<double>(x); }},
@@ -369,7 +330,7 @@ int main(int argc, char *argv[]) {
         {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
         {"riemann_zeta", [](double x) -> double { return boost::math::zeta(x); }},
     };
-    std::unordered_map<std::string, fun_1d> std_funs = {
+    std::unordered_map<std::string, fun_dx1> std_funs = {
         {"tgamma", [](double x) -> double { return std::tgamma(x); }},
         {"lgamma", [](double x) -> double { return std::lgamma(x); }},
         {"sin", [](double x) -> double { return std::sin(x); }},
@@ -402,7 +363,7 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return std::pow(x, 3.5); }},
         {"pow13", [](double x) -> double { return std::pow(x, 13); }},
     };
-    std::unordered_map<std::string, fun_1d> sleef_funs = {
+    std::unordered_map<std::string, fun_dx1> sleef_funs = {
         {"sin_pi", Sleef_sinpid1_u05purecfma},
         {"cos_pi", Sleef_cospid1_u05purecfma},
         {"sin", Sleef_sind1_u10purecfma},
@@ -431,7 +392,7 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); }},
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
-    std::unordered_map<std::string, sleef_fun_1d_dx4> sleef_funs_dx4 = {
+    std::unordered_map<std::string, sleef_fun_dx4> sleef_funs_dx4 = {
         {"sin_pi", Sleef_sinpid4_u05avx2},
         {"cos_pi", Sleef_cospid4_u05avx2},
         {"sin", Sleef_sind4_u10avx2},
@@ -460,7 +421,7 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{3.5}); }},
         {"pow13", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{13}); }},
     };
-    std::unordered_map<std::string, sleef_fun_1d_dx8> sleef_funs_dx8 = {
+    std::unordered_map<std::string, sleef_fun_dx8> sleef_funs_dx8 = {
         {"sin_pi", Sleef_sinpid8_u05avx512f},
         {"cos_pi", Sleef_cospid8_u05avx512f},
         {"sin", Sleef_sind8_u10avx512f},
@@ -489,7 +450,7 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](sleef_dx8 x) -> sleef_dx8 { return Sleef_powd8_u10avx512f(x, sleef_dx8{3.5}); }},
         {"pow13", [](sleef_dx8 x) -> sleef_dx8 { return Sleef_powd8_u10avx512f(x, sleef_dx8{13}); }},
     };
-    std::unordered_map<std::string, sctl_fun_1d_dx4> sctl_funs_dx4 = {
+    std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
