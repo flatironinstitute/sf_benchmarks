@@ -35,7 +35,7 @@ typedef sctl::Vec<double, 8> sctl_dx8;
 
 typedef std::function<double(double)> fun_dx1;
 typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_dx4;
-typedef std::function<sctl_dx8::VData(const sctl_dx4::VData &)> sctl_fun_dx8;
+typedef std::function<sctl_dx8::VData(const sctl_dx8::VData &)> sctl_fun_dx8;
 typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_dx4;
 typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_dx8;
 
@@ -453,6 +453,10 @@ int main(int argc, char *argv[]) {
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
+    std::unordered_map<std::string, sctl_fun_dx8> sctl_funs_dx8 = {
+        {"exp", sctl::exp_intrin<sctl_dx8::VData>},
+    };
+
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
         {"sin", OPS::SIN},         {"cos", OPS::COS},      {"tan", OPS::TAN},     {"sinh", OPS::SINH},
         {"cosh", OPS::COSH},       {"tanh", OPS::TANH},    {"exp", OPS::EXP},     {"log", OPS::LOG},
@@ -470,6 +474,8 @@ int main(int argc, char *argv[]) {
     for (auto kv : std_funs)
         fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx4)
+        fun_union.insert(kv.first);
+    for (auto kv : sctl_funs_dx8)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs)
         fun_union.insert(kv.first);
@@ -493,13 +499,14 @@ int main(int argc, char *argv[]) {
         val = rand() / (double)RAND_MAX;
 
     for (auto key : keys_to_eval) {
-        std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
+        std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
+        std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
-        std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
+        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
         std::cout << test_func(key, "eigen", eigen_funs, vals);
         std::cout << "\n\n";
     }
