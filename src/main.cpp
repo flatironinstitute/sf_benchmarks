@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <complex>
 #include <cstdlib>
 #include <iomanip>
 #include <ios>
@@ -33,29 +34,34 @@ typedef __m512d sleef_dx8;
 typedef sctl::Vec<double, 4> sctl_dx4;
 typedef sctl::Vec<double, 8> sctl_dx8;
 
+typedef std::complex<double> cdouble;
 typedef std::function<double(double)> fun_dx1;
+typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_dx4;
 typedef std::function<sctl_dx8::VData(const sctl_dx8::VData &)> sctl_fun_dx8;
 typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_dx4;
 typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_dx8;
 
+template <typename VAL_T>
 class BenchResult {
   public:
-    std::vector<double> res;
+    std::vector<VAL_T> res;
     double eval_time = 0.0;
     std::string label;
 
     BenchResult(const std::string &label_) : label(label_){};
     BenchResult(const std::string &label_, std::size_t size) : res(size), label(label_){};
 
-    double &operator[](int i) { return res[i]; }
+    VAL_T &operator[](int i) { return res[i]; }
     double Mevals() const { return res.size() / eval_time / 1E6; }
 
-    friend std::ostream &operator<<(std::ostream &, const BenchResult &);
+    template <typename T>
+    friend std::ostream &operator<<(std::ostream &, const BenchResult<T> &);
 };
 
-std::ostream &operator<<(std::ostream &os, const BenchResult &br) {
-    double mean = 0.0;
+template <typename VAL_T>
+std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
+    VAL_T mean = 0.0;
     for (const auto &v : br.res)
         mean += v;
     mean /= br.res.size();
@@ -72,14 +78,14 @@ std::ostream &operator<<(std::ostream &os, const BenchResult &br) {
     return os;
 }
 
-template <typename FUN_T>
-BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, FUN_T> funs, const std::vector<double> &vals) {
+template <typename FUN_T, typename VAL_T>
+BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
+                             const std::unordered_map<std::string, FUN_T> funs, const std::vector<VAL_T> &vals) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
-        return BenchResult(label);
+        return BenchResult<VAL_T>(label);
 
-    BenchResult res(label, vals.size());
+    BenchResult<VAL_T> res(label, vals.size());
     const FUN_T &f = funs.at(name);
 
     // Load a big thing to clear cache. No idea why compiler isn't optimizing this away.
@@ -88,7 +94,7 @@ BenchResult test_func(const std::string name, const std::string library_prefix,
         c[j] = j;
 
     const struct timespec st = get_wtime();
-    if constexpr (std::is_same_v<FUN_T, fun_dx1>) {
+    if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
         for (std::size_t i = 0; i < vals.size(); ++i)
             res[i] = f(vals[i]);
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
@@ -150,15 +156,15 @@ enum OPS {
 }
 
 template <>
-BenchResult test_func(const std::string name, const std::string library_prefix,
-                      const std::unordered_map<std::string, OPS::OPS> funs, const std::vector<double> &vals) {
+BenchResult<double> test_func(const std::string name, const std::string library_prefix,
+                              const std::unordered_map<std::string, OPS::OPS> funs, const std::vector<double> &vals) {
     Eigen::Map<const Eigen::ArrayXd> x(vals.data(), vals.size());
 
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
-        return BenchResult(label);
+        return BenchResult<double>(label);
 
-    BenchResult res(label, vals.size());
+    BenchResult<double> res(label, vals.size());
 
     Eigen::Map<Eigen::VectorXd> res_eigen(res.res.data(), vals.size());
 
@@ -254,6 +260,12 @@ std::set<std::string> parse_args(int argc, char *argv[]) {
     return res;
 }
 
+inline cdouble gsl_complex_wrapper(cdouble z, int (*f)(double, double, gsl_sf_result *, gsl_sf_result *)) {
+    gsl_sf_result re, im;
+    f(z.real(), z.imag(), &re, &im);
+    return cdouble{re.val, im.val};
+}
+
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
@@ -294,6 +306,13 @@ int main(int argc, char *argv[]) {
         {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
         {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
         {"riemann_zeta", gsl_sf_zeta},
+    };
+    std::unordered_map<std::string, fun_cdx1> gsl_complex_funs = {
+        {"sin", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_sin_e); }},
+        {"cos", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_cos_e); }},
+        {"log", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_log_e); }},
+        {"dilog", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_dilog_e); }},
+        {"lgamma", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_lngamma_complex_e); }},
     };
     std::unordered_map<std::string, fun_dx1> boost_funs = {
         {"sin_pi", [](double x) -> double { return boost::math::sin_pi(x); }},
@@ -469,6 +488,8 @@ int main(int argc, char *argv[]) {
     std::set<std::string> fun_union;
     for (auto kv : gsl_funs)
         fun_union.insert(kv.first);
+    for (auto kv : gsl_complex_funs)
+        fun_union.insert(kv.first);
     for (auto kv : boost_funs)
         fun_union.insert(kv.first);
     for (auto kv : std_funs)
@@ -494,14 +515,18 @@ int main(int argc, char *argv[]) {
         keys_to_eval = fun_union;
 
     std::vector<double> vals(1000000);
+    std::vector<cdouble> cvals(1000000);
     srand(100);
     for (auto &val : vals)
         val = rand() / (double)RAND_MAX;
+    for (auto &cval : cvals)
+        cval = {rand() / (double)RAND_MAX, rand() / (double)RAND_MAX};
 
     for (auto key : keys_to_eval) {
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
+        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, cvals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
         std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
