@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <complex>
 #include <cstdlib>
+#include <functional>
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -29,18 +30,24 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
     return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
 }
 
+
+typedef std::complex<double> cdouble;
 typedef __m256d sleef_dx4;
 typedef __m512d sleef_dx8;
 typedef sctl::Vec<double, 4> sctl_dx4;
 typedef sctl::Vec<double, 8> sctl_dx8;
 
-typedef std::complex<double> cdouble;
 typedef std::function<double(double)> fun_dx1;
 typedef std::function<cdouble(cdouble)> fun_cdx1;
+typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_dx4;
 typedef std::function<sctl_dx8::VData(const sctl_dx8::VData &)> sctl_fun_dx8;
 typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_dx4;
 typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_dx8;
+
+extern "C" {
+void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
+}
 
 template <typename VAL_T>
 class BenchResult {
@@ -85,7 +92,11 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     if (!funs.count(name))
         return BenchResult<VAL_T>(label);
 
-    BenchResult<VAL_T> res(label, vals.size());
+    size_t res_size = vals.size();
+    if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
+        res_size *= 2;
+    BenchResult<VAL_T> res(label, res_size);
+
     const FUN_T &f = funs.at(name);
 
     // Load a big thing to clear cache. No idea why compiler isn't optimizing this away.
@@ -97,6 +108,10 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
         for (std::size_t i = 0; i < vals.size(); ++i)
             res[i] = f(vals[i]);
+    } else if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
+        for (std::size_t i = 0; i < vals.size(); ++i) {
+            std::tie(res[i * 2], res[i * 2 + 1]) = f(vals[i]);
+        }
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
             sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
@@ -269,44 +284,57 @@ inline cdouble gsl_complex_wrapper(cdouble z, int (*f)(double, double, gsl_sf_re
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
-    std::unordered_map<std::string, fun_dx1> gsl_funs = {
-        {"sin_pi", gsl_sf_sin_pi},
-        {"cos_pi", gsl_sf_cos_pi},
-        {"sin", gsl_sf_sin},
-        {"cos", gsl_sf_cos},
-        {"sinc", gsl_sf_sinc},
-        {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(M_PI * x); }},
-        {"erf", gsl_sf_erf},
-        {"erfc", gsl_sf_erfc},
-        {"tgamma", gsl_sf_gamma},
-        {"lgamma", gsl_sf_lngamma},
-        {"log", gsl_sf_log},
-        {"exp", gsl_sf_exp},
-        {"pow13", [](double x) -> double { return gsl_sf_pow_int(x, 13); }},
-        {"bessel_Y0", gsl_sf_bessel_Y0},
-        {"bessel_Y1", gsl_sf_bessel_Y1},
-        {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
-        {"bessel_I0", gsl_sf_bessel_I0},
-        {"bessel_I1", gsl_sf_bessel_I1},
-        {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
-        {"bessel_J0", gsl_sf_bessel_J0},
-        {"bessel_J1", gsl_sf_bessel_J1},
-        {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
-        {"bessel_K0", gsl_sf_bessel_K0},
-        {"bessel_K1", gsl_sf_bessel_K1},
-        {"bessel_K2", [](double x) -> double { return gsl_sf_bessel_Kn(2, x); }},
-        {"bessel_j0", gsl_sf_bessel_j0},
-        {"bessel_j1", gsl_sf_bessel_j1},
-        {"bessel_j2", gsl_sf_bessel_j2},
-        {"bessel_y0", gsl_sf_bessel_y0},
-        {"bessel_y1", gsl_sf_bessel_y1},
-        {"bessel_y2", gsl_sf_bessel_y2},
-        {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
-        {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
-        {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
-        {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
-        {"riemann_zeta", gsl_sf_zeta},
-    };
+    cdouble z{1.0, 1.0}, h0, h1;
+    int ifexpon = 1;
+    hank103_((double _Complex *)&z, (double _Complex *)&h0, (double _Complex *)&h1, &ifexpon);
+    std::cout << z << " " << h0 << " " << h1 << std::endl;
+
+    std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
+        {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
+             cdouble h0, h1;
+             int ifexpon = 1;
+             hank103_((double _Complex *)&z, (double _Complex *)&h0, (double _Complex *)&h1, &ifexpon);
+             return {h0, h1};
+         }}};
+    std::unordered_map<std::string, fun_dx1>
+        gsl_funs = {
+            {"sin_pi", gsl_sf_sin_pi},
+            {"cos_pi", gsl_sf_cos_pi},
+            {"sin", gsl_sf_sin},
+            {"cos", gsl_sf_cos},
+            {"sinc", gsl_sf_sinc},
+            {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(M_PI * x); }},
+            {"erf", gsl_sf_erf},
+            {"erfc", gsl_sf_erfc},
+            {"tgamma", gsl_sf_gamma},
+            {"lgamma", gsl_sf_lngamma},
+            {"log", gsl_sf_log},
+            {"exp", gsl_sf_exp},
+            {"pow13", [](double x) -> double { return gsl_sf_pow_int(x, 13); }},
+            {"bessel_Y0", gsl_sf_bessel_Y0},
+            {"bessel_Y1", gsl_sf_bessel_Y1},
+            {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
+            {"bessel_I0", gsl_sf_bessel_I0},
+            {"bessel_I1", gsl_sf_bessel_I1},
+            {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
+            {"bessel_J0", gsl_sf_bessel_J0},
+            {"bessel_J1", gsl_sf_bessel_J1},
+            {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
+            {"bessel_K0", gsl_sf_bessel_K0},
+            {"bessel_K1", gsl_sf_bessel_K1},
+            {"bessel_K2", [](double x) -> double { return gsl_sf_bessel_Kn(2, x); }},
+            {"bessel_j0", gsl_sf_bessel_j0},
+            {"bessel_j1", gsl_sf_bessel_j1},
+            {"bessel_j2", gsl_sf_bessel_j2},
+            {"bessel_y0", gsl_sf_bessel_y0},
+            {"bessel_y1", gsl_sf_bessel_y1},
+            {"bessel_y2", gsl_sf_bessel_y2},
+            {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
+            {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
+            {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
+            {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
+            {"riemann_zeta", gsl_sf_zeta},
+        };
     std::unordered_map<std::string, fun_cdx1> gsl_complex_funs = {
         {"sin", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_sin_e); }},
         {"cos", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_cos_e); }},
@@ -486,6 +514,8 @@ int main(int argc, char *argv[]) {
     };
 
     std::set<std::string> fun_union;
+    for (auto kv : hank10x_funs)
+        fun_union.insert(kv.first);
     for (auto kv : gsl_funs)
         fun_union.insert(kv.first);
     for (auto kv : gsl_complex_funs)
@@ -532,7 +562,8 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
         std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
-        std::cout << test_func(key, "eigen", eigen_funs, vals);
+        std::cout << test_func(key, "eigen", eigen_funs, vals) << std::endl;
+        std::cout << test_func(key, "hank10x", hank10x_funs, cvals);
         std::cout << "\n\n";
     }
 

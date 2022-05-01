@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(
   sf_benchmarks
-  LANGUAGES C CXX
+  LANGUAGES C CXX Fortran
   )
 include(ExternalProject)
 set(CMAKE_CXX_STANDARD 17)
@@ -33,7 +33,7 @@ ExternalProject_Add(libbaobzi
 include_directories(${CMAKE_BINARY_DIR}/contrib/include ${PROJECT_SOURCE_DIR}/extern/SCTL/include ${PROJECT_SOURCE_DIR}/extern/eigen/)
 link_directories(${CMAKE_BINARY_DIR}/contrib/lib64)
 
-file(GLOB SF_SOURCES "src/*.cpp")
+file(GLOB SF_SOURCES "src/main.cpp" "src/hank103.f")
 add_executable(sf_benchmarks ${SF_SOURCES})
 target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES} ${GSL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 target_link_libraries(sf_benchmarks sleef gsl baobzi)
