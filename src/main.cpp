@@ -30,7 +30,6 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
     return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
 }
 
-
 typedef std::complex<double> cdouble;
 typedef __m256d sleef_dx4;
 typedef __m512d sleef_dx8;
@@ -55,12 +54,14 @@ class BenchResult {
     std::vector<VAL_T> res;
     double eval_time = 0.0;
     std::string label;
+    std::size_t n_evals;
 
     BenchResult(const std::string &label_) : label(label_){};
-    BenchResult(const std::string &label_, std::size_t size) : res(size), label(label_){};
+    BenchResult(const std::string &label_, std::size_t size, std::size_t n_evals_)
+        : res(size), label(label_), n_evals(n_evals_){};
 
     VAL_T &operator[](int i) { return res[i]; }
-    double Mevals() const { return res.size() / eval_time / 1E6; }
+    double Mevals() const { return n_evals / eval_time / 1E6; }
 
     template <typename T>
     friend std::ostream &operator<<(std::ostream &, const BenchResult<T> &);
@@ -93,9 +94,10 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
         return BenchResult<VAL_T>(label);
 
     size_t res_size = vals.size();
+    size_t n_evals = vals.size();
     if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
         res_size *= 2;
-    BenchResult<VAL_T> res(label, res_size);
+    BenchResult<VAL_T> res(label, res_size, n_evals);
 
     const FUN_T &f = funs.at(name);
 
@@ -179,7 +181,7 @@ BenchResult<double> test_func(const std::string name, const std::string library_
     if (!funs.count(name))
         return BenchResult<double>(label);
 
-    BenchResult<double> res(label, vals.size());
+    BenchResult<double> res(label, vals.size(), vals.size());
 
     Eigen::Map<Eigen::VectorXd> res_eigen(res.res.data(), vals.size());
 
@@ -296,45 +298,44 @@ int main(int argc, char *argv[]) {
              hank103_((double _Complex *)&z, (double _Complex *)&h0, (double _Complex *)&h1, &ifexpon);
              return {h0, h1};
          }}};
-    std::unordered_map<std::string, fun_dx1>
-        gsl_funs = {
-            {"sin_pi", gsl_sf_sin_pi},
-            {"cos_pi", gsl_sf_cos_pi},
-            {"sin", gsl_sf_sin},
-            {"cos", gsl_sf_cos},
-            {"sinc", gsl_sf_sinc},
-            {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(M_PI * x); }},
-            {"erf", gsl_sf_erf},
-            {"erfc", gsl_sf_erfc},
-            {"tgamma", gsl_sf_gamma},
-            {"lgamma", gsl_sf_lngamma},
-            {"log", gsl_sf_log},
-            {"exp", gsl_sf_exp},
-            {"pow13", [](double x) -> double { return gsl_sf_pow_int(x, 13); }},
-            {"bessel_Y0", gsl_sf_bessel_Y0},
-            {"bessel_Y1", gsl_sf_bessel_Y1},
-            {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
-            {"bessel_I0", gsl_sf_bessel_I0},
-            {"bessel_I1", gsl_sf_bessel_I1},
-            {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
-            {"bessel_J0", gsl_sf_bessel_J0},
-            {"bessel_J1", gsl_sf_bessel_J1},
-            {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
-            {"bessel_K0", gsl_sf_bessel_K0},
-            {"bessel_K1", gsl_sf_bessel_K1},
-            {"bessel_K2", [](double x) -> double { return gsl_sf_bessel_Kn(2, x); }},
-            {"bessel_j0", gsl_sf_bessel_j0},
-            {"bessel_j1", gsl_sf_bessel_j1},
-            {"bessel_j2", gsl_sf_bessel_j2},
-            {"bessel_y0", gsl_sf_bessel_y0},
-            {"bessel_y1", gsl_sf_bessel_y1},
-            {"bessel_y2", gsl_sf_bessel_y2},
-            {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
-            {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
-            {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
-            {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
-            {"riemann_zeta", gsl_sf_zeta},
-        };
+    std::unordered_map<std::string, fun_dx1> gsl_funs = {
+        {"sin_pi", gsl_sf_sin_pi},
+        {"cos_pi", gsl_sf_cos_pi},
+        {"sin", gsl_sf_sin},
+        {"cos", gsl_sf_cos},
+        {"sinc", gsl_sf_sinc},
+        {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(M_PI * x); }},
+        {"erf", gsl_sf_erf},
+        {"erfc", gsl_sf_erfc},
+        {"tgamma", gsl_sf_gamma},
+        {"lgamma", gsl_sf_lngamma},
+        {"log", gsl_sf_log},
+        {"exp", gsl_sf_exp},
+        {"pow13", [](double x) -> double { return gsl_sf_pow_int(x, 13); }},
+        {"bessel_Y0", gsl_sf_bessel_Y0},
+        {"bessel_Y1", gsl_sf_bessel_Y1},
+        {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
+        {"bessel_I0", gsl_sf_bessel_I0},
+        {"bessel_I1", gsl_sf_bessel_I1},
+        {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
+        {"bessel_J0", gsl_sf_bessel_J0},
+        {"bessel_J1", gsl_sf_bessel_J1},
+        {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
+        {"bessel_K0", gsl_sf_bessel_K0},
+        {"bessel_K1", gsl_sf_bessel_K1},
+        {"bessel_K2", [](double x) -> double { return gsl_sf_bessel_Kn(2, x); }},
+        {"bessel_j0", gsl_sf_bessel_j0},
+        {"bessel_j1", gsl_sf_bessel_j1},
+        {"bessel_j2", gsl_sf_bessel_j2},
+        {"bessel_y0", gsl_sf_bessel_y0},
+        {"bessel_y1", gsl_sf_bessel_y1},
+        {"bessel_y2", gsl_sf_bessel_y2},
+        {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
+        {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
+        {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
+        {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
+        {"riemann_zeta", gsl_sf_zeta},
+    };
     std::unordered_map<std::string, fun_cdx1> gsl_complex_funs = {
         {"sin", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_sin_e); }},
         {"cos", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_cos_e); }},
