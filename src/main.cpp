@@ -559,10 +559,14 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl_complex", gsl_complex_funs, cvals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
-        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
-        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
-        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
-        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
+        if (__builtin_cpu_supports("avx2"))
+            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
+        if (__builtin_cpu_supports("avx512f"))
+            std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
+        if (__builtin_cpu_supports("avx2"))
+            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
+        if (__builtin_cpu_supports("avx512f"))
+            std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
         std::cout << test_func(key, "eigen", eigen_funs, vals) << std::endl;
         std::cout << test_func(key, "hank10x", hank10x_funs, cvals);
         std::cout << "\n\n";
