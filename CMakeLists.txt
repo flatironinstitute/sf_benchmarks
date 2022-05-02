@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(GSL REQUIRED)
 find_package(Boost)
 
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
+
 set (default_build_type "Release")
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message (STATUS "No build type specified. Setting build type to Release.")

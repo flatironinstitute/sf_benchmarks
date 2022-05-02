@@ -462,8 +462,14 @@ int main(int argc, char *argv[]) {
         {"lgamma", Sleef_lgammad4_u10avx2},
         {"tgamma", Sleef_tgammad4_u10avx2},
         {"sqrt", Sleef_sqrtd4_u05avx2},
-        {"pow3.5", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{3.5}); }},
-        {"pow13", [](sleef_dx4 x) -> sleef_dx4 { return Sleef_powd4_u10avx2(x, sleef_dx4{13}); }},
+        {"pow3.5",
+         [](sleef_dx4 x) -> sleef_dx4 {
+             return Sleef_powd4_u10avx2(x, sleef_dx4{3.5, 3.5, 3.5, 3.5});
+         }},
+        {"pow13",
+         [](sleef_dx4 x) -> sleef_dx4 {
+             return Sleef_powd4_u10avx2(x, sleef_dx4{13, 13, 13, 13});
+         }},
     };
     std::unordered_map<std::string, sleef_fun_dx8> sleef_funs_dx8 = {
         {"sin_pi", Sleef_sinpid8_u05avx512f},
@@ -491,8 +497,14 @@ int main(int argc, char *argv[]) {
         {"lgamma", Sleef_lgammad8_u10avx512f},
         {"tgamma", Sleef_tgammad8_u10avx512f},
         {"sqrt", Sleef_sqrtd8_u05avx512f},
-        {"pow3.5", [](sleef_dx8 x) -> sleef_dx8 { return Sleef_powd8_u10avx512f(x, sleef_dx8{3.5}); }},
-        {"pow13", [](sleef_dx8 x) -> sleef_dx8 { return Sleef_powd8_u10avx512f(x, sleef_dx8{13}); }},
+        {"pow3.5",
+         [](sleef_dx8 x) -> sleef_dx8 {
+             return Sleef_powd8_u10avx512f(x, sleef_dx8{3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5});
+         }},
+        {"pow13",
+         [](sleef_dx8 x) -> sleef_dx8 {
+             return Sleef_powd8_u10avx512f(x, sleef_dx8{13, 13, 13, 13, 13, 13, 13, 13});
+         }},
     };
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
