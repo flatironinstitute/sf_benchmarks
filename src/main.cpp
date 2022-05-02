@@ -286,11 +286,6 @@ inline cdouble gsl_complex_wrapper(cdouble z, int (*f)(double, double, gsl_sf_re
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
-    cdouble z{1.0, 1.0}, h0, h1;
-    int ifexpon = 1;
-    hank103_((double _Complex *)&z, (double _Complex *)&h0, (double _Complex *)&h1, &ifexpon);
-    std::cout << z << " " << h0 << " " << h1 << std::endl;
-
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
         {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
              cdouble h0, h1;
