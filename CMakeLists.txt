@@ -15,11 +15,13 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Valid options: Debug, RelWithDebInfo, Release" FORCE)
 endif()
 
-set(SF_INCLUDES
+set(
+  SF_INCLUDES
   ${PROJECT_SOURCE_DIR}/include
 )
 
-ExternalProject_Add(libsleef
+ExternalProject_Add(
+  libsleef
   SOURCE_DIR ${PROJECT_SOURCE_DIR}/extern/sleef
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/contrib
 )
@@ -30,7 +32,12 @@ ExternalProject_Add(libbaobzi
              -DBAOBZI_BUILD_SHARED=OFF -DBAOBZI_BUILD_EXAMPLES=OFF -DBAOBZI_BUILD_STATIC=ON
 )
 
-include_directories(${CMAKE_BINARY_DIR}/contrib/include ${PROJECT_SOURCE_DIR}/extern/SCTL/include ${PROJECT_SOURCE_DIR}/extern/eigen/)
+include_directories(
+  ${CMAKE_BINARY_DIR}/contrib/include
+  ${PROJECT_SOURCE_DIR}/extern/SCTL/include
+  ${PROJECT_SOURCE_DIR}/extern/eigen/
+  ${PROJECT_SOURCE_DIR}/extern/toml11
+)
 link_directories(${CMAKE_BINARY_DIR}/contrib/lib64)
 
 file(GLOB SF_SOURCES "src/main.cpp" "src/hank103.f")
