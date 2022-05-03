@@ -395,16 +395,11 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
 
     std::unordered_map<std::string, Params> params = {
-        {"sin_pi", {.domain{0.0, 2.0}}},
-        {"cos_pi", {.domain{0.0, 2.0}}},
-        {"sin", {.domain{0.0, 2 * M_PI}}},
-        {"cos", {.domain{0.0, 2 * M_PI}}},
-        {"tan", {.domain{0.0, 2 * M_PI}}},
-        {"erf", {.domain{-1.0, 1.0}}},
-        {"erfc", {.domain{-1.0, 1.0}}},
-        {"exp", {.domain{-10.0, 10.0}}},
-        {"log", {.domain{0.0, 10.0}}},
-        {"acosh", {.domain{1.0, 1000.0}}},
+        {"sin_pi", {.domain{0.0, 2.0}}},     {"cos_pi", {.domain{0.0, 2.0}}},    {"sin", {.domain{0.0, 2 * M_PI}}},
+        {"cos", {.domain{0.0, 2 * M_PI}}},   {"tan", {.domain{0.0, 2 * M_PI}}},  {"asin", {.domain{-1.0, 1.0}}},
+        {"acos", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}}, {"erf", {.domain{-1.0, 1.0}}},
+        {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},    {"log", {.domain{0.0, 10.0}}},
+        {"asinh", {.domain{-100.0, 100.0}}}, {"acosh", {.domain{1.0, 1000.0}}},  {"atanh", {.domain{-1.0, 1.0}}},
     };
 
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
