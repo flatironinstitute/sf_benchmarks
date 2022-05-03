@@ -13,3 +13,6 @@
 [submodule "extern/toml11"]
 	path = extern/toml11
 	url = https://github.com/ToruNiina/toml11
+[submodule "extern/vectorclass2"]
+	path = extern/vectorclass2
+	url = https://github.com/vectorclass/version2

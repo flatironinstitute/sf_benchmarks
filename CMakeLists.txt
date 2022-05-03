@@ -37,8 +37,9 @@ ExternalProject_Add(libbaobzi
 include_directories(
   ${CMAKE_BINARY_DIR}/contrib/include
   ${PROJECT_SOURCE_DIR}/extern/SCTL/include
-  ${PROJECT_SOURCE_DIR}/extern/eigen/
+  ${PROJECT_SOURCE_DIR}/extern/eigen
   ${PROJECT_SOURCE_DIR}/extern/toml11
+  ${PROJECT_SOURCE_DIR}/extern/vectorclass2
 )
 link_directories(${CMAKE_BINARY_DIR}/contrib/lib64 ${PROJECT_SOURCE_DIR}/extern/amd-libm/lib)
 

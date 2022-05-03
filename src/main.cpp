@@ -18,6 +18,10 @@
 #include <sctl.hpp>
 #include <sleef.h>
 #include <unsupported/Eigen/SpecialFunctions>
+#include <vectorclass.h>
+#include <vectormath_exp.h>
+#include <vectormath_hyp.h>
+#include <vectormath_trig.h>
 
 #include <dlfcn.h>
 #include <time.h>
@@ -582,6 +586,52 @@ int main(int argc, char *argv[]) {
              return Sleef_powd8_u10avx512f(x, sleef_dx8{13, 13, 13, 13, 13, 13, 13, 13});
          }},
     };
+    std::unordered_map<std::string, sleef_fun_dx4> af_funs_dx4 = {
+        {"sqrt", [](Vec4d x) -> Vec4d { return sqrt(x); }},
+        {"sin", [](Vec4d x) -> Vec4d { return sin(x); }},
+        {"cos", [](Vec4d x) -> Vec4d { return cos(x); }},
+        {"tan", [](Vec4d x) -> Vec4d { return tan(x); }},
+        {"sinh", [](Vec4d x) -> Vec4d { return sinh(x); }},
+        {"cosh", [](Vec4d x) -> Vec4d { return cosh(x); }},
+        {"tanh", [](Vec4d x) -> Vec4d { return tanh(x); }},
+        {"asinh", [](Vec4d x) -> Vec4d { return asinh(x); }},
+        {"acosh", [](Vec4d x) -> Vec4d { return acosh(x); }},
+        {"atanh", [](Vec4d x) -> Vec4d { return atanh(x); }},
+        {"asin", [](Vec4d x) -> Vec4d { return asin(x); }},
+        {"acos", [](Vec4d x) -> Vec4d { return acos(x); }},
+        {"atan", [](Vec4d x) -> Vec4d { return atan(x); }},
+        {"exp", [](Vec4d x) -> Vec4d { return exp(x); }},
+        {"exp2", [](Vec4d x) -> Vec4d { return exp2(x); }},
+        {"exp10", [](Vec4d x) -> Vec4d { return exp10(x); }},
+        {"log", [](Vec4d x) -> Vec4d { return log(x); }},
+        {"log2", [](Vec4d x) -> Vec4d { return log2(x); }},
+        {"log10", [](Vec4d x) -> Vec4d { return log10(x); }},
+        {"pow3.5", [](Vec4d x) -> Vec4d { return pow(x, 3.5); }},
+        {"pow13", [](Vec4d x) -> Vec4d { return pow_const(x, 13); }},
+    };
+    std::unordered_map<std::string, sleef_fun_dx8> af_funs_dx8 = {
+        {"sqrt", [](Vec8d x) -> Vec8d { return sqrt(x); }},
+        {"sin", [](Vec8d x) -> Vec8d { return sin(x); }},
+        {"cos", [](Vec8d x) -> Vec8d { return cos(x); }},
+        {"tan", [](Vec8d x) -> Vec8d { return tan(x); }},
+        {"sinh", [](Vec8d x) -> Vec8d { return sinh(x); }},
+        {"cosh", [](Vec8d x) -> Vec8d { return cosh(x); }},
+        {"tanh", [](Vec8d x) -> Vec8d { return tanh(x); }},
+        {"asinh", [](Vec8d x) -> Vec8d { return asinh(x); }},
+        {"acosh", [](Vec8d x) -> Vec8d { return acosh(x); }},
+        {"atanh", [](Vec8d x) -> Vec8d { return atanh(x); }},
+        {"asin", [](Vec8d x) -> Vec8d { return asin(x); }},
+        {"acos", [](Vec8d x) -> Vec8d { return acos(x); }},
+        {"atan", [](Vec8d x) -> Vec8d { return atan(x); }},
+        {"exp", [](Vec8d x) -> Vec8d { return exp(x); }},
+        {"exp2", [](Vec8d x) -> Vec8d { return exp2(x); }},
+        {"exp10", [](Vec8d x) -> Vec8d { return exp10(x); }},
+        {"log", [](Vec8d x) -> Vec8d { return log(x); }},
+        {"log2", [](Vec8d x) -> Vec8d { return log2(x); }},
+        {"log10", [](Vec8d x) -> Vec8d { return log10(x); }},
+        {"pow3.5", [](Vec8d x) -> Vec8d { return pow(x, 3.5); }},
+        {"pow13", [](Vec8d x) -> Vec8d { return pow_const(x, 13); }},
+    };
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
@@ -615,6 +665,10 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx8)
         fun_union.insert(kv.first);
+    for (auto kv : af_funs_dx4)
+        fun_union.insert(kv.first);
+    for (auto kv : af_funs_dx8)
+        fun_union.insert(kv.first);
     for (auto kv : sleef_funs)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs_dx4)
@@ -644,6 +698,10 @@ int main(int argc, char *argv[]) {
         std::cout << test_func(key, "amdlibm", amdlibm_funs, vals) << std::endl;
         if (__builtin_cpu_supports("avx2"))
             std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, vals) << std::endl;
+        if (__builtin_cpu_supports("avx2"))
+            std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, vals) << std::endl;
+        if (__builtin_cpu_supports("avx2"))
+            std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl_complex", gsl_complex_funs, cvals) << std::endl;
