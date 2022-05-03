@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <functional>
 #include <iomanip>
@@ -8,6 +10,7 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <string>
 #include <toml.hpp>
 #include <type_traits>
 #include <unordered_map>
@@ -24,6 +27,7 @@
 #include <vectormath_trig.h>
 
 #include <dlfcn.h>
+#include <gnu/libc-version.h>
 #include <time.h>
 
 struct timespec get_wtime() {
@@ -84,11 +88,11 @@ std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
     using std::setw;
     if (br.res.size()) {
         os.precision(6);
-        os << left << setw(20) << br.label + ": " << left << setw(15) << br.Mevals();
+        os << left << setw(25) << br.label + ": " << left << setw(15) << br.Mevals();
         os.precision(15);
         os << left << setw(15) << mean;
     } else
-        os << left << setw(20) << br.label + ": " << setw(15) << "NA" << setw(15) << "NA";
+        os << left << setw(25) << br.label + ": " << setw(15) << "NA" << setw(15) << "NA";
     return os;
 }
 
@@ -290,10 +294,59 @@ inline cdouble gsl_complex_wrapper(cdouble z, int (*f)(double, double, gsl_sf_re
     return cdouble{re.val, im.val};
 }
 
+std::string exec(const char *cmd) {
+    // https://stackoverflow.com/a/478960
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    result.pop_back();
+    return result;
+}
+
+std::string get_alm_version() {
+    std::string offset_str = "0x" + exec("objdump -t ../extern/amd-libm/lib/libalm.so --section=.rodata | grep -m1 "
+                                         "ALM_VERSION_STRING | cut -d' ' -f 1");
+    size_t offset = strtol(offset_str.c_str(), NULL, 0);
+    FILE *obj = fopen("../extern/amd-libm/lib/libalm.so", "r");
+    fseek(obj, offset, 0);
+    char buf[16];
+    fread(buf, sizeof(char), 16, obj);
+    fclose(obj);
+    return buf;
+}
+
+std::string get_sleef_version() {
+    return std::to_string(SLEEF_VERSION_MAJOR) + "." + std::to_string(SLEEF_VERSION_MINOR) + "." +
+           std::to_string(SLEEF_VERSION_PATCHLEVEL);
+}
+
+std::string get_af_version() {
+    return std::to_string(VECTORCLASS_H / 10000) + "." + std::to_string((VECTORCLASS_H / 100) % 100) + "." +
+           std::to_string(VECTORCLASS_H % 10);
+}
+
+std::string get_sctl_version() { return exec("cd ../extern/SCTL; git describe --tags"); }
+
+std::string get_baobzi_version() { return exec("cd ../extern/baobzi; git describe --tags").substr(1); }
+
+std::string get_eigen_version() {
+    return std::to_string(EIGEN_WORLD_VERSION) + "." + std::to_string(EIGEN_MAJOR_VERSION) + "." +
+           std::to_string(EIGEN_MINOR_VERSION);
+}
+
+std::string get_cpu_name() { return exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3"); }
+
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
     void *handle = dlopen("libalm.so", RTLD_LAZY);
+
     using C_FUN1D = double (*)(double);
     using C_FUN2D = double (*)(double, double);
     C_FUN1D amd_sin = (C_FUN1D)dlsym(handle, "amd_sin");
