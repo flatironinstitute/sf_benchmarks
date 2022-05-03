@@ -57,7 +57,7 @@ void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
 template <typename VAL_T>
 class BenchResult {
   public:
-    std::vector<VAL_T> res;
+    Eigen::VectorX<VAL_T> res;
     double eval_time = 0.0;
     std::string label;
     std::size_t n_evals;
@@ -94,7 +94,7 @@ std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
 
 template <typename FUN_T, typename VAL_T>
 BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
-                             const std::unordered_map<std::string, FUN_T> funs, const std::vector<VAL_T> &vals) {
+                             const std::unordered_map<std::string, FUN_T> funs, const Eigen::VectorX<VAL_T> &vals) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<VAL_T>(label);
@@ -104,6 +104,7 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
         res_size *= 2;
     BenchResult<VAL_T> res(label, res_size, n_evals);
+    VAL_T *resptr = res.res.data();
 
     const FUN_T &f = funs.at(name);
 
@@ -115,30 +116,30 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     const struct timespec st = get_wtime();
     if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
         for (std::size_t i = 0; i < vals.size(); ++i)
-            res[i] = f(vals[i]);
+            resptr[i] = f(vals[i]);
     } else if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
         for (std::size_t i = 0; i < vals.size(); ++i) {
-            std::tie(res[i * 2], res[i * 2 + 1]) = f(vals[i]);
+            std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
         }
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
             sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
-            sctl_dx4(f(x.get())).Store(res.res.data() + i);
+            sctl_dx4(f(x.get())).Store(resptr + i);
         }
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
         for (std::size_t i = 0; i < vals.size(); i += 8) {
             sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
-            sctl_dx8(f(x.get())).Store(res.res.data() + i);
+            sctl_dx8(f(x.get())).Store(resptr + i);
         }
     } else if constexpr (std::is_same_v<FUN_T, sleef_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
             sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
-            _mm256_store_pd(res.res.data() + i, f(x.get().v));
+            _mm256_store_pd(resptr + i, f(x.get().v));
         }
     } else if constexpr (std::is_same_v<FUN_T, sleef_fun_dx8>) {
         for (std::size_t i = 0; i < vals.size(); i += 8) {
             sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
-            _mm512_store_pd(res.res.data() + i, f(x.get().v));
+            _mm512_store_pd(resptr + i, f(x.get().v));
         }
     }
     const struct timespec ft = get_wtime();
@@ -180,7 +181,7 @@ enum OPS {
 
 template <>
 BenchResult<double> test_func(const std::string name, const std::string library_prefix,
-                              const std::unordered_map<std::string, OPS::OPS> funs, const std::vector<double> &vals) {
+                              const std::unordered_map<std::string, OPS::OPS> funs, const Eigen::VectorXd &vals) {
     Eigen::Map<const Eigen::ArrayXd> x(vals.data(), vals.size());
 
     const std::string label = library_prefix + "_" + name;
@@ -189,7 +190,7 @@ BenchResult<double> test_func(const std::string name, const std::string library_
 
     BenchResult<double> res(label, vals.size(), vals.size());
 
-    Eigen::Map<Eigen::VectorXd> res_eigen(res.res.data(), vals.size());
+    Eigen::VectorXd &res_eigen = res.res;
 
     OPS::OPS OP = funs.at(name);
     const struct timespec st = get_wtime();
@@ -685,13 +686,9 @@ int main(int argc, char *argv[]) {
     else
         keys_to_eval = fun_union;
 
-    std::vector<double> vals(1000000);
-    std::vector<cdouble> cvals(1000000);
-    srand(100);
-    for (auto &val : vals)
-        val = rand() / (double)RAND_MAX;
-    for (auto &cval : cvals)
-        cval = {rand() / (double)RAND_MAX, rand() / (double)RAND_MAX};
+    constexpr int NEvals = 1E7;
+    Eigen::VectorXd vals = 0.5 * (Eigen::ArrayXd::Random(NEvals) + 1.0);
+    Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
 
     for (auto key : keys_to_eval) {
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
@@ -700,7 +697,7 @@ int main(int argc, char *argv[]) {
             std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, vals) << std::endl;
         if (__builtin_cpu_supports("avx2"))
             std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, vals) << std::endl;
-        if (__builtin_cpu_supports("avx2"))
+        if (__builtin_cpu_supports("avx512f"))
             std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
