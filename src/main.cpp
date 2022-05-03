@@ -37,8 +37,8 @@ double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
 }
 
 typedef std::complex<double> cdouble;
-typedef __m256d sleef_dx4;
-typedef __m512d sleef_dx8;
+typedef __m256d generic_dx4;
+typedef __m512d generic_dx8;
 typedef sctl::Vec<double, 4> sctl_dx4;
 typedef sctl::Vec<double, 8> sctl_dx8;
 
@@ -47,8 +47,8 @@ typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_dx4;
 typedef std::function<sctl_dx8::VData(const sctl_dx8::VData &)> sctl_fun_dx8;
-typedef std::function<sleef_dx4(sleef_dx4)> sleef_fun_dx4;
-typedef std::function<sleef_dx8(sleef_dx8)> sleef_fun_dx8;
+typedef std::function<generic_dx4(generic_dx4)> generic_fun_dx4;
+typedef std::function<generic_dx8(generic_dx8)> generic_fun_dx8;
 
 extern "C" {
 void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
@@ -131,12 +131,12 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
             sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
             sctl_dx8(f(x.get())).Store(resptr + i);
         }
-    } else if constexpr (std::is_same_v<FUN_T, sleef_fun_dx4>) {
+    } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
             sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
             _mm256_store_pd(resptr + i, f(x.get().v));
         }
-    } else if constexpr (std::is_same_v<FUN_T, sleef_fun_dx8>) {
+    } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx8>) {
         for (std::size_t i = 0; i < vals.size(); i += 8) {
             sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
             _mm512_store_pd(resptr + i, f(x.get().v));
@@ -317,8 +317,8 @@ int main(int argc, char *argv[]) {
     C_FUN1D amd_sqrt = (C_FUN1D)dlsym(handle, "amd_sqrt");
     C_FUN2D amd_pow = (C_FUN2D)dlsym(handle, "amd_pow");
 
-    using C_DX4_FUN1D = sleef_dx4 (*)(sleef_dx4);
-    using C_DX4_FUN2D = sleef_dx4 (*)(sleef_dx4, sleef_dx4);
+    using C_DX4_FUN1D = generic_dx4 (*)(generic_dx4);
+    using C_DX4_FUN2D = generic_dx4 (*)(generic_dx4, generic_dx4);
     C_DX4_FUN1D amd_vrd4_sin = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_sin");
     C_DX4_FUN1D amd_vrd4_cos = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_cos");
     C_DX4_FUN1D amd_vrd4_tan = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_tan");
@@ -373,6 +373,7 @@ int main(int argc, char *argv[]) {
         {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
         {"riemann_zeta", gsl_sf_zeta},
     };
+
     std::unordered_map<std::string, fun_cdx1> gsl_complex_funs = {
         {"sin", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_sin_e); }},
         {"cos", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_cos_e); }},
@@ -380,6 +381,7 @@ int main(int argc, char *argv[]) {
         {"dilog", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_dilog_e); }},
         {"lgamma", [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_lngamma_complex_e); }},
     };
+
     std::unordered_map<std::string, fun_dx1> boost_funs = {
         {"sin_pi", [](double x) -> double { return boost::math::sin_pi(x); }},
         {"cos_pi", [](double x) -> double { return boost::math::cos_pi(x); }},
@@ -415,6 +417,7 @@ int main(int argc, char *argv[]) {
         {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
         {"riemann_zeta", [](double x) -> double { return boost::math::zeta(x); }},
     };
+
     std::unordered_map<std::string, fun_dx1> std_funs = {
         {"tgamma", [](double x) -> double { return std::tgamma(x); }},
         {"lgamma", [](double x) -> double { return std::lgamma(x); }},
@@ -448,6 +451,7 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return std::pow(x, 3.5); }},
         {"pow13", [](double x) -> double { return std::pow(x, 13); }},
     };
+
     std::unordered_map<std::string, fun_dx1> amdlibm_funs = {
         {"sin", amd_sin},
         {"cos", amd_cos},
@@ -471,7 +475,8 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [&amd_pow](double x) -> double { return amd_pow(x, 3.5); }},
         {"pow13", [&amd_pow](double x) -> double { return amd_pow(x, 13); }},
     };
-    std::unordered_map<std::string, sleef_fun_dx4> amdlibm_funs_dx4 = {
+
+    std::unordered_map<std::string, generic_fun_dx4> amdlibm_funs_dx4 = {
         {"sin", amd_vrd4_sin},
         {"cos", amd_vrd4_cos},
         {"tan", amd_vrd4_tan},
@@ -480,14 +485,15 @@ int main(int argc, char *argv[]) {
         {"exp", amd_vrd4_exp},
         {"exp2", amd_vrd4_exp2},
         {"pow3.5",
-         [&amd_vrd4_pow](sleef_dx4 x) -> sleef_dx4 {
-             return amd_vrd4_pow(x, sleef_dx4{3.5, 3.5, 3.5, 3.5});
+         [&amd_vrd4_pow](generic_dx4 x) -> generic_dx4 {
+             return amd_vrd4_pow(x, generic_dx4{3.5, 3.5, 3.5, 3.5});
          }},
         {"pow13",
-         [&amd_vrd4_pow](sleef_dx4 x) -> sleef_dx4 {
-             return amd_vrd4_pow(x, sleef_dx4{13, 13, 13, 13});
+         [&amd_vrd4_pow](generic_dx4 x) -> generic_dx4 {
+             return amd_vrd4_pow(x, generic_dx4{13, 13, 13, 13});
          }},
     };
+
     std::unordered_map<std::string, fun_dx1> sleef_funs = {
         {"sin_pi", Sleef_sinpid1_u05purecfma},
         {"cos_pi", Sleef_cospid1_u05purecfma},
@@ -517,7 +523,8 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); }},
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
-    std::unordered_map<std::string, sleef_fun_dx4> sleef_funs_dx4 = {
+
+    std::unordered_map<std::string, generic_fun_dx4> sleef_funs_dx4 = {
         {"sin_pi", Sleef_sinpid4_u05avx2},
         {"cos_pi", Sleef_cospid4_u05avx2},
         {"sin", Sleef_sind4_u10avx2},
@@ -544,15 +551,16 @@ int main(int argc, char *argv[]) {
         {"tgamma", Sleef_tgammad4_u10avx2},
         {"sqrt", Sleef_sqrtd4_u05avx2},
         {"pow3.5",
-         [](sleef_dx4 x) -> sleef_dx4 {
-             return Sleef_powd4_u10avx2(x, sleef_dx4{3.5, 3.5, 3.5, 3.5});
+         [](generic_dx4 x) -> generic_dx4 {
+             return Sleef_powd4_u10avx2(x, generic_dx4{3.5, 3.5, 3.5, 3.5});
          }},
         {"pow13",
-         [](sleef_dx4 x) -> sleef_dx4 {
-             return Sleef_powd4_u10avx2(x, sleef_dx4{13, 13, 13, 13});
+         [](generic_dx4 x) -> generic_dx4 {
+             return Sleef_powd4_u10avx2(x, generic_dx4{13, 13, 13, 13});
          }},
     };
-    std::unordered_map<std::string, sleef_fun_dx8> sleef_funs_dx8 = {
+
+    std::unordered_map<std::string, generic_fun_dx8> sleef_funs_dx8 = {
         {"sin_pi", Sleef_sinpid8_u05avx512f},
         {"cos_pi", Sleef_cospid8_u05avx512f},
         {"sin", Sleef_sind8_u10avx512f},
@@ -579,15 +587,16 @@ int main(int argc, char *argv[]) {
         {"tgamma", Sleef_tgammad8_u10avx512f},
         {"sqrt", Sleef_sqrtd8_u05avx512f},
         {"pow3.5",
-         [](sleef_dx8 x) -> sleef_dx8 {
-             return Sleef_powd8_u10avx512f(x, sleef_dx8{3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5});
+         [](generic_dx8 x) -> generic_dx8 {
+             return Sleef_powd8_u10avx512f(x, generic_dx8{3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5});
          }},
         {"pow13",
-         [](sleef_dx8 x) -> sleef_dx8 {
-             return Sleef_powd8_u10avx512f(x, sleef_dx8{13, 13, 13, 13, 13, 13, 13, 13});
+         [](generic_dx8 x) -> generic_dx8 {
+             return Sleef_powd8_u10avx512f(x, generic_dx8{13, 13, 13, 13, 13, 13, 13, 13});
          }},
     };
-    std::unordered_map<std::string, sleef_fun_dx4> af_funs_dx4 = {
+
+    std::unordered_map<std::string, generic_fun_dx4> af_funs_dx4 = {
         {"sqrt", [](Vec4d x) -> Vec4d { return sqrt(x); }},
         {"sin", [](Vec4d x) -> Vec4d { return sin(x); }},
         {"cos", [](Vec4d x) -> Vec4d { return cos(x); }},
@@ -610,7 +619,8 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](Vec4d x) -> Vec4d { return pow(x, 3.5); }},
         {"pow13", [](Vec4d x) -> Vec4d { return pow_const(x, 13); }},
     };
-    std::unordered_map<std::string, sleef_fun_dx8> af_funs_dx8 = {
+
+    std::unordered_map<std::string, generic_fun_dx8> af_funs_dx8 = {
         {"sqrt", [](Vec8d x) -> Vec8d { return sqrt(x); }},
         {"sin", [](Vec8d x) -> Vec8d { return sin(x); }},
         {"cos", [](Vec8d x) -> Vec8d { return cos(x); }},
@@ -633,9 +643,11 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](Vec8d x) -> Vec8d { return pow(x, 3.5); }},
         {"pow13", [](Vec8d x) -> Vec8d { return pow_const(x, 13); }},
     };
+
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
     };
+
     std::unordered_map<std::string, sctl_fun_dx8> sctl_funs_dx8 = {
         {"exp", sctl::exp_intrin<sctl_dx8::VData>},
     };
