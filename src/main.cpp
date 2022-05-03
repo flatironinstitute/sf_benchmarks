@@ -127,22 +127,22 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
         }
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
-            sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
-            sctl_dx4(f(x.get())).Store(resptr + i);
+            sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
+            sctl_dx4(f(x.get())).StoreAligned(resptr + i);
         }
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
         for (std::size_t i = 0; i < vals.size(); i += 8) {
-            sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
-            sctl_dx8(f(x.get())).Store(resptr + i);
+            sctl_dx8 x = sctl_dx8::LoadAligned(vals.data() + i);
+            sctl_dx8(f(x.get())).StoreAligned(resptr + i);
         }
     } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
-            sctl_dx4 x = sctl_dx4::Load(vals.data() + i);
+            sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
             _mm256_store_pd(resptr + i, f(x.get().v));
         }
     } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx8>) {
         for (std::size_t i = 0; i < vals.size(); i += 8) {
-            sctl_dx8 x = sctl_dx8::Load(vals.data() + i);
+            sctl_dx8 x = sctl_dx8::LoadAligned(vals.data() + i);
             _mm512_store_pd(resptr + i, f(x.get().v));
         }
     }
