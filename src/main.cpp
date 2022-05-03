@@ -19,6 +19,7 @@
 #include <sleef.h>
 #include <unsupported/Eigen/SpecialFunctions>
 
+#include <dlfcn.h>
 #include <time.h>
 
 struct timespec get_wtime() {
@@ -287,6 +288,41 @@ inline cdouble gsl_complex_wrapper(cdouble z, int (*f)(double, double, gsl_sf_re
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
+    void *handle = dlopen("libalm.so", RTLD_LAZY);
+    using C_FUN1D = double (*)(double);
+    using C_FUN2D = double (*)(double, double);
+    C_FUN1D amd_sin = (C_FUN1D)dlsym(handle, "amd_sin");
+    C_FUN1D amd_cos = (C_FUN1D)dlsym(handle, "amd_cos");
+    C_FUN1D amd_tan = (C_FUN1D)dlsym(handle, "amd_tan");
+    C_FUN1D amd_sinh = (C_FUN1D)dlsym(handle, "amd_sinh");
+    C_FUN1D amd_cosh = (C_FUN1D)dlsym(handle, "amd_cosh");
+    C_FUN1D amd_tanh = (C_FUN1D)dlsym(handle, "amd_tanh");
+    C_FUN1D amd_asin = (C_FUN1D)dlsym(handle, "amd_asin");
+    C_FUN1D amd_acos = (C_FUN1D)dlsym(handle, "amd_acos");
+    C_FUN1D amd_atan = (C_FUN1D)dlsym(handle, "amd_atan");
+    C_FUN1D amd_asinh = (C_FUN1D)dlsym(handle, "amd_asinh");
+    C_FUN1D amd_acosh = (C_FUN1D)dlsym(handle, "amd_acosh");
+    C_FUN1D amd_atanh = (C_FUN1D)dlsym(handle, "amd_atanh");
+    C_FUN1D amd_log = (C_FUN1D)dlsym(handle, "amd_log");
+    C_FUN1D amd_log2 = (C_FUN1D)dlsym(handle, "amd_log2");
+    C_FUN1D amd_log10 = (C_FUN1D)dlsym(handle, "amd_log10");
+    C_FUN1D amd_exp = (C_FUN1D)dlsym(handle, "amd_exp");
+    C_FUN1D amd_exp2 = (C_FUN1D)dlsym(handle, "amd_exp2");
+    C_FUN1D amd_exp10 = (C_FUN1D)dlsym(handle, "amd_exp10");
+    C_FUN1D amd_sqrt = (C_FUN1D)dlsym(handle, "amd_sqrt");
+    C_FUN2D amd_pow = (C_FUN2D)dlsym(handle, "amd_pow");
+
+    using C_DX4_FUN1D = sleef_dx4 (*)(sleef_dx4);
+    using C_DX4_FUN2D = sleef_dx4 (*)(sleef_dx4, sleef_dx4);
+    C_DX4_FUN1D amd_vrd4_sin = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_sin");
+    C_DX4_FUN1D amd_vrd4_cos = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_cos");
+    C_DX4_FUN1D amd_vrd4_tan = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_tan");
+    C_DX4_FUN1D amd_vrd4_log = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_log");
+    C_DX4_FUN1D amd_vrd4_log2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_log2");
+    C_DX4_FUN1D amd_vrd4_exp = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp");
+    C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
+    C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
+
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
         {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
              cdouble h0, h1;
@@ -407,6 +443,46 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](double x) -> double { return std::pow(x, 3.5); }},
         {"pow13", [](double x) -> double { return std::pow(x, 13); }},
     };
+    std::unordered_map<std::string, fun_dx1> amdlibm_funs = {
+        {"sin", amd_sin},
+        {"cos", amd_cos},
+        {"tan", amd_tan},
+        {"sinh", amd_sinh},
+        {"cosh", amd_cosh},
+        {"tanh", amd_tanh},
+        {"asin", amd_asin},
+        {"acos", amd_acos},
+        {"atan", amd_atan},
+        {"asinh", amd_asinh},
+        {"acosh", amd_acosh},
+        {"atanh", amd_atanh},
+        {"log", amd_log},
+        {"log2", amd_log2},
+        {"log10", amd_log10},
+        {"exp", amd_exp},
+        {"exp2", amd_exp2},
+        {"exp10", amd_exp10},
+        {"sqrt", amd_sqrt},
+        {"pow3.5", [&amd_pow](double x) -> double { return amd_pow(x, 3.5); }},
+        {"pow13", [&amd_pow](double x) -> double { return amd_pow(x, 13); }},
+    };
+    std::unordered_map<std::string, sleef_fun_dx4> amdlibm_funs_dx4 = {
+        {"sin", amd_vrd4_sin},
+        {"cos", amd_vrd4_cos},
+        {"tan", amd_vrd4_tan},
+        {"log", amd_vrd4_log},
+        {"log2", amd_vrd4_log2},
+        {"exp", amd_vrd4_exp},
+        {"exp2", amd_vrd4_exp2},
+        {"pow3.5",
+         [&amd_vrd4_pow](sleef_dx4 x) -> sleef_dx4 {
+             return amd_vrd4_pow(x, sleef_dx4{3.5, 3.5, 3.5, 3.5});
+         }},
+        {"pow13",
+         [&amd_vrd4_pow](sleef_dx4 x) -> sleef_dx4 {
+             return amd_vrd4_pow(x, sleef_dx4{13, 13, 13, 13});
+         }},
+    };
     std::unordered_map<std::string, fun_dx1> sleef_funs = {
         {"sin_pi", Sleef_sinpid1_u05purecfma},
         {"cos_pi", Sleef_cospid1_u05purecfma},
@@ -423,7 +499,7 @@ int main(int argc, char *argv[]) {
         {"acosh", Sleef_acoshd1_u10purecfma},
         {"atanh", Sleef_atanhd1_u10purecfma},
         {"log", Sleef_logd1_u10purecfma},
-        {"log", Sleef_log2d1_u10purecfma},
+        {"log2", Sleef_log2d1_u10purecfma},
         {"log10", Sleef_log10d1_u10purecfma},
         {"exp", Sleef_expd1_u10purecfma},
         {"exp2", Sleef_exp2d1_u10purecfma},
@@ -533,6 +609,8 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : std_funs)
         fun_union.insert(kv.first);
+    for (auto kv : amdlibm_funs)
+        fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx4)
         fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx8)
@@ -563,6 +641,9 @@ int main(int argc, char *argv[]) {
 
     for (auto key : keys_to_eval) {
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
+        std::cout << test_func(key, "amdlibm", amdlibm_funs, vals) << std::endl;
+        if (__builtin_cpu_supports("avx2"))
+            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, vals) << std::endl;
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl_complex", gsl_complex_funs, cvals) << std::endl;
