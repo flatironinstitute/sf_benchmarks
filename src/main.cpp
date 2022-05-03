@@ -17,6 +17,7 @@
 #include <unordered_map>
 
 #include <Eigen/Core>
+#include <baobzi.hpp>
 #include <boost/math/special_functions.hpp>
 #include <gsl/gsl_sf.h>
 #include <sctl.hpp>
@@ -71,10 +72,11 @@ class BenchResult {
     double eval_time = 0.0;
     std::string label;
     std::size_t n_evals;
+    Params params;
 
     BenchResult(const std::string &label_) : label(label_){};
-    BenchResult(const std::string &label_, std::size_t size, std::size_t n_evals_)
-        : res(size), label(label_), n_evals(n_evals_){};
+    BenchResult(const std::string &label_, std::size_t size, std::size_t n_evals_, Params params_)
+        : res(size), label(label_), n_evals(n_evals_), params(params_){};
 
     VAL_T &operator[](int i) { return res[i]; }
     double Mevals() const { return n_evals / eval_time / 1E6; }
@@ -96,9 +98,10 @@ std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
         os.precision(6);
         os << left << setw(25) << br.label + ": " << left << setw(15) << br.Mevals();
         os.precision(15);
-        os << left << setw(15) << mean;
-    } else
-        os << left << setw(25) << br.label + ": " << setw(15) << "NA" << setw(15) << "NA";
+        os << left << setw(15) << mean << left << setw(5) << " ";
+        os.precision(5);
+        os << "[" << br.params.domain.first << ", " << br.params.domain.second << "]" << std::endl;
+    }
     return os;
 }
 
@@ -123,7 +126,7 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     size_t n_evals = vals.size();
     if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
         res_size *= 2;
-    BenchResult<VAL_T> res(label, res_size, n_evals);
+    BenchResult<VAL_T> res(label, res_size, n_evals, par);
     VAL_T *resptr = res.res.data();
 
     const FUN_T &f = funs.at(name);
@@ -132,6 +135,8 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
         for (std::size_t i = 0; i < vals.size(); ++i)
             resptr[i] = f(vals[i]);
+    } else if constexpr (std::is_same_v<FUN_T, baobzi::Baobzi &>) {
+        f(vals.data(), resptr, vals.size());
     } else if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
         for (std::size_t i = 0; i < vals.size(); ++i) {
             std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
@@ -205,7 +210,7 @@ BenchResult<double> test_func(const std::string name, const std::string library_
     const Params &par = params[name];
     Eigen::VectorXd x = transform_domain(vals_in, par.domain.first, par.domain.second);
 
-    BenchResult<double> res(label, x.size(), x.size());
+    BenchResult<double> res(label, x.size(), x.size(), par);
 
     Eigen::VectorXd &res_eigen = res.res;
 
@@ -355,8 +360,36 @@ std::string get_eigen_version() {
 
 std::string get_cpu_name() { return exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3"); }
 
+double baobzi_fun_wrapper(const double *x, const void *data) {
+    double (*myfun)(double) = (double (*)(double))data;
+    return myfun(*x);
+}
+
+baobzi::Baobzi create_baobzi_func(void* infun, const std::pair<double, double> &domain) {
+    baobzi_input_t input = {.func = baobzi_fun_wrapper,
+                            .data = infun,
+                            .dim = 1,
+                            .order = 8,
+                            .tol = 1E-10,
+                            .minimum_leaf_fraction = 0.6,
+                            .split_multi_eval = 0};
+    double hl = 0.5 * (domain.second - domain.first);
+    double center = domain.first + hl;
+
+    return baobzi::Baobzi(&input, &center, &hl);
+}
+
 int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
+
+    std::unordered_map<std::string, Params> params = {
+        {"sin_pi", {.domain{0.0, 2.0}}},     {"cos_pi", {.domain{0.0, 2.0}}},     {"sin", {.domain{0.0, 2 * M_PI}}},
+        {"cos", {.domain{0.0, 2 * M_PI}}},   {"tan", {.domain{0.0, 2 * M_PI}}},   {"asin", {.domain{-1.0, 1.0}}},
+        {"acos", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}},  {"erf", {.domain{-1.0, 1.0}}},
+        {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},     {"log", {.domain{0.0, 10.0}}},
+        {"asinh", {.domain{-100.0, 100.0}}}, {"acosh", {.domain{1.0, 1000.0}}},   {"atanh", {.domain{-1.0, 1.0}}},
+        {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}},
+    };
 
     void *handle = dlopen("libalm.so", RTLD_LAZY);
 
@@ -394,12 +427,12 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
 
-    std::unordered_map<std::string, Params> params = {
-        {"sin_pi", {.domain{0.0, 2.0}}},     {"cos_pi", {.domain{0.0, 2.0}}},    {"sin", {.domain{0.0, 2 * M_PI}}},
-        {"cos", {.domain{0.0, 2 * M_PI}}},   {"tan", {.domain{0.0, 2 * M_PI}}},  {"asin", {.domain{-1.0, 1.0}}},
-        {"acos", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}}, {"erf", {.domain{-1.0, 1.0}}},
-        {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},    {"log", {.domain{0.0, 10.0}}},
-        {"asinh", {.domain{-100.0, 100.0}}}, {"acosh", {.domain{1.0, 1000.0}}},  {"atanh", {.domain{-1.0, 1.0}}},
+    baobzi::Baobzi baobzi_bessel_Y0 = create_baobzi_func((void*) gsl_sf_bessel_Y0, params["bessel_Y0"].domain);
+    baobzi::Baobzi baobzi_bessel_Y1 = create_baobzi_func((void *)gsl_sf_bessel_Y1, params["bessel_Y1"].domain);
+
+    std::unordered_map<std::string, baobzi::Baobzi &> baobzi_funs{
+        {"bessel_Y0", baobzi_bessel_Y0},
+        {"bessel_Y1", baobzi_bessel_Y1},
     };
 
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
@@ -487,7 +520,6 @@ int main(int argc, char *argv[]) {
         {"hermite_0", [](double x) -> double { return boost::math::hermite(0, x); }},
         {"hermite_1", [](double x) -> double { return boost::math::hermite(1, x); }},
         {"hermite_2", [](double x) -> double { return boost::math::hermite(2, x); }},
-        {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
         {"hermite_3", [](double x) -> double { return boost::math::hermite(3, x); }},
         {"riemann_zeta", [](double x) -> double { return boost::math::zeta(x); }},
     };
@@ -783,29 +815,29 @@ int main(int argc, char *argv[]) {
     Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
 
     for (auto key : keys_to_eval) {
-        std::cout << test_func(key, "std", std_funs, params, vals) << std::endl;
-        std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals) << std::endl;
-        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals) << std::endl;
-        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals) << std::endl;
-
+        std::cout << test_func(key, "std", std_funs, params, vals);
+        std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals);
+        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals);
+        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals) << std::endl;
+        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals);
 #endif
-        std::cout << test_func(key, "boost", boost_funs, params, vals) << std::endl;
-        std::cout << test_func(key, "gsl", gsl_funs, params, vals) << std::endl;
-        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals) << std::endl;
-        std::cout << test_func(key, "sleef", sleef_funs, params, vals) << std::endl;
-        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals) << std::endl;
+        std::cout << test_func(key, "boost", boost_funs, params, vals);
+        std::cout << test_func(key, "gsl", gsl_funs, params, vals);
+        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals);
+        std::cout << test_func(key, "sleef", sleef_funs, params, vals);
+        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals) << std::endl;
+        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals);
 #endif
-        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals) << std::endl;
+        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals) << std::endl;
+        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals);
 #endif
-        std::cout << test_func(key, "eigen", eigen_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "eigen", eigen_funs, params, vals);
         std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals);
-        std::cout << "\n\n";
+        std::cout << test_func(key, "baobzi", baobzi_funs, params, vals);
+        std::cout << "\n";
     }
 
     return 0;
