@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <toml.hpp>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 
@@ -39,6 +40,11 @@ struct timespec get_wtime() {
 double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
     return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
 }
+
+class Params {
+  public:
+    std::pair<double, double> domain{0.0, 1.0};
+};
 
 typedef std::complex<double> cdouble;
 typedef __m256d generic_dx4;
@@ -96,12 +102,22 @@ std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
     return os;
 }
 
+template <typename VAL_T>
+Eigen::VectorX<VAL_T> transform_domain(const Eigen::VectorX<VAL_T> &vals, double lower, double upper) {
+    double delta = upper - lower;
+    return vals.array() * delta + lower;
+}
+
 template <typename FUN_T, typename VAL_T>
 BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
-                             const std::unordered_map<std::string, FUN_T> funs, const Eigen::VectorX<VAL_T> &vals) {
+                             const std::unordered_map<std::string, FUN_T> funs,
+                             std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<VAL_T>(label);
+
+    const Params &par = params[name];
+    Eigen::VectorX<VAL_T> vals = transform_domain(vals_in, par.domain.first, par.domain.second);
 
     size_t res_size = vals.size();
     size_t n_evals = vals.size();
@@ -111,11 +127,6 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     VAL_T *resptr = res.res.data();
 
     const FUN_T &f = funs.at(name);
-
-    // Load a big thing to clear cache. No idea why compiler isn't optimizing this away.
-    std::vector<char> c(200 * 1024 * 1024);
-    for (int j = 0; j < c.size(); j++)
-        c[j] = j;
 
     const struct timespec st = get_wtime();
     if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
@@ -185,14 +196,16 @@ enum OPS {
 
 template <>
 BenchResult<double> test_func(const std::string name, const std::string library_prefix,
-                              const std::unordered_map<std::string, OPS::OPS> funs, const Eigen::VectorXd &vals) {
-    Eigen::Map<const Eigen::ArrayXd> x(vals.data(), vals.size());
-
+                              const std::unordered_map<std::string, OPS::OPS> funs,
+                              std::unordered_map<std::string, Params> params, const Eigen::VectorXd &vals_in) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<double>(label);
 
-    BenchResult<double> res(label, vals.size(), vals.size());
+    const Params &par = params[name];
+    Eigen::VectorXd x = transform_domain(vals_in, par.domain.first, par.domain.second);
+
+    BenchResult<double> res(label, x.size(), x.size());
 
     Eigen::VectorXd &res_eigen = res.res;
 
@@ -201,76 +214,76 @@ BenchResult<double> test_func(const std::string name, const std::string library_
 
     switch (OP) {
     case OPS::COS:
-        res_eigen = x.cos();
+        res_eigen = x.array().cos();
         break;
     case OPS::SIN:
-        res_eigen = x.sin();
+        res_eigen = x.array().sin();
         break;
     case OPS::TAN:
-        res_eigen = x.tan();
+        res_eigen = x.array().tan();
         break;
     case OPS::COSH:
-        res_eigen = x.cosh();
+        res_eigen = x.array().cosh();
         break;
     case OPS::SINH:
-        res_eigen = x.sinh();
+        res_eigen = x.array().sinh();
         break;
     case OPS::TANH:
-        res_eigen = x.tanh();
+        res_eigen = x.array().tanh();
         break;
     case OPS::EXP:
-        res_eigen = x.exp();
+        res_eigen = x.array().exp();
         break;
     case OPS::LOG:
-        res_eigen = x.log();
+        res_eigen = x.array().log();
         break;
     case OPS::LOG10:
-        res_eigen = x.log10();
+        res_eigen = x.array().log10();
         break;
     case OPS::POW35:
-        res_eigen = x.pow(3.5);
+        res_eigen = x.array().pow(3.5);
         break;
     case OPS::POW13:
-        res_eigen = x.pow(13);
+        res_eigen = x.array().pow(13);
         break;
     case OPS::ASIN:
-        res_eigen = x.asin();
+        res_eigen = x.array().asin();
         break;
     case OPS::ACOS:
-        res_eigen = x.acos();
+        res_eigen = x.array().acos();
         break;
     case OPS::ATAN:
-        res_eigen = x.atan();
+        res_eigen = x.array().atan();
         break;
     case OPS::ASINH:
-        res_eigen = x.asinh();
+        res_eigen = x.array().asinh();
         break;
     case OPS::ACOSH:
-        res_eigen = x.acosh();
+        res_eigen = x.array().acosh();
         break;
     case OPS::ATANH:
-        res_eigen = x.atanh();
+        res_eigen = x.array().atanh();
         break;
     case OPS::ERF:
-        res_eigen = x.erf();
+        res_eigen = x.array().erf();
         break;
     case OPS::ERFC:
-        res_eigen = x.erfc();
+        res_eigen = x.array().erfc();
         break;
     case OPS::LGAMMA:
-        res_eigen = x.lgamma();
+        res_eigen = x.array().lgamma();
         break;
     case OPS::DIGAMMA:
-        res_eigen = x.digamma();
+        res_eigen = x.array().digamma();
         break;
     case OPS::NDTRI:
-        res_eigen = x.ndtri();
+        res_eigen = x.array().ndtri();
         break;
     case OPS::SQRT:
-        res_eigen = x.sqrt();
+        res_eigen = x.array().sqrt();
         break;
     case OPS::RSQRT:
-        res_eigen = x.rsqrt();
+        res_eigen = x.array().rsqrt();
         break;
     }
 
@@ -380,6 +393,19 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN1D amd_vrd4_exp = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp");
     C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
+
+    std::unordered_map<std::string, Params> params = {
+        {"sin_pi", {.domain{0.0, 2.0}}},
+        {"cos_pi", {.domain{0.0, 2.0}}},
+        {"sin", {.domain{0.0, 2 * M_PI}}},
+        {"cos", {.domain{0.0, 2 * M_PI}}},
+        {"tan", {.domain{0.0, 2 * M_PI}}},
+        {"erf", {.domain{-1.0, 1.0}}},
+        {"erfc", {.domain{-1.0, 1.0}}},
+        {"exp", {.domain{-10.0, 10.0}}},
+        {"log", {.domain{0.0, 10.0}}},
+        {"acosh", {.domain{1.0, 1000.0}}},
+    };
 
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
         {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
@@ -762,28 +788,28 @@ int main(int argc, char *argv[]) {
     Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
 
     for (auto key : keys_to_eval) {
-        std::cout << test_func(key, "std", std_funs, vals) << std::endl;
-        std::cout << test_func(key, "amdlibm", amdlibm_funs, vals) << std::endl;
-        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, vals) << std::endl;
-        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, vals) << std::endl;
+        std::cout << test_func(key, "std", std_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals) << std::endl;
+        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals) << std::endl;
 
 #ifdef __AVX512F__
-        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, vals) << std::endl;
+        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals) << std::endl;
 #endif
-        std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
-        std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
-        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, cvals) << std::endl;
-        std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
-        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
+        std::cout << test_func(key, "boost", boost_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "gsl", gsl_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals) << std::endl;
+        std::cout << test_func(key, "sleef", sleef_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals) << std::endl;
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
+        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals) << std::endl;
 #endif
-        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
+        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals) << std::endl;
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
+        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals) << std::endl;
 #endif
-        std::cout << test_func(key, "eigen", eigen_funs, vals) << std::endl;
-        std::cout << test_func(key, "hank10x", hank10x_funs, cvals);
+        std::cout << test_func(key, "eigen", eigen_funs, params, vals) << std::endl;
+        std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals);
         std::cout << "\n\n";
     }
 
