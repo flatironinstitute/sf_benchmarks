@@ -560,6 +560,7 @@ int main(int argc, char *argv[]) {
          }},
     };
 
+#ifdef __AVX512F__
     std::unordered_map<std::string, generic_fun_dx8> sleef_funs_dx8 = {
         {"sin_pi", Sleef_sinpid8_u05avx512f},
         {"cos_pi", Sleef_cospid8_u05avx512f},
@@ -595,6 +596,7 @@ int main(int argc, char *argv[]) {
              return Sleef_powd8_u10avx512f(x, generic_dx8{13, 13, 13, 13, 13, 13, 13, 13});
          }},
     };
+#endif
 
     std::unordered_map<std::string, generic_fun_dx4> af_funs_dx4 = {
         {"sqrt", [](Vec4d x) -> Vec4d { return sqrt(x); }},
@@ -620,6 +622,7 @@ int main(int argc, char *argv[]) {
         {"pow13", [](Vec4d x) -> Vec4d { return pow_const(x, 13); }},
     };
 
+#ifdef __AVX512F__
     std::unordered_map<std::string, generic_fun_dx8> af_funs_dx8 = {
         {"sqrt", [](Vec8d x) -> Vec8d { return sqrt(x); }},
         {"sin", [](Vec8d x) -> Vec8d { return sin(x); }},
@@ -643,6 +646,7 @@ int main(int argc, char *argv[]) {
         {"pow3.5", [](Vec8d x) -> Vec8d { return pow(x, 3.5); }},
         {"pow13", [](Vec8d x) -> Vec8d { return pow_const(x, 13); }},
     };
+#endif
 
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
@@ -676,20 +680,22 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx4)
         fun_union.insert(kv.first);
-    for (auto kv : sctl_funs_dx8)
-        fun_union.insert(kv.first);
     for (auto kv : af_funs_dx4)
-        fun_union.insert(kv.first);
-    for (auto kv : af_funs_dx8)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs_dx4)
         fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_dx8)
-        fun_union.insert(kv.first);
     for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
+#ifdef __AVX512F__
+    for (auto kv : sctl_funs_dx8)
+        fun_union.insert(kv.first);
+    for (auto kv : sleef_funs_dx8)
+        fun_union.insert(kv.first);
+    for (auto kv : af_funs_dx8)
+        fun_union.insert(kv.first);
+#endif
 
     std::set<std::string> keys_to_eval;
     if (input_keys.size() > 0)
@@ -705,24 +711,24 @@ int main(int argc, char *argv[]) {
     for (auto key : keys_to_eval) {
         std::cout << test_func(key, "std", std_funs, vals) << std::endl;
         std::cout << test_func(key, "amdlibm", amdlibm_funs, vals) << std::endl;
-        if (__builtin_cpu_supports("avx2"))
-            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, vals) << std::endl;
-        if (__builtin_cpu_supports("avx2"))
-            std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, vals) << std::endl;
-        if (__builtin_cpu_supports("avx512f"))
-            std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, vals) << std::endl;
+        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, vals) << std::endl;
+        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, vals) << std::endl;
+
+#ifdef __AVX512F__
+        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, vals) << std::endl;
+#endif
         std::cout << test_func(key, "boost", boost_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl", gsl_funs, vals) << std::endl;
         std::cout << test_func(key, "gsl_complex", gsl_complex_funs, cvals) << std::endl;
         std::cout << test_func(key, "sleef", sleef_funs, vals) << std::endl;
-        if (__builtin_cpu_supports("avx2"))
-            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
-        if (__builtin_cpu_supports("avx512f"))
-            std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
-        if (__builtin_cpu_supports("avx2"))
-            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
-        if (__builtin_cpu_supports("avx512f"))
-            std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
+        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, vals) << std::endl;
+#ifdef __AVX512F__
+        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, vals) << std::endl;
+#endif
+        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, vals) << std::endl;
+#ifdef __AVX512F__
+        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, vals) << std::endl;
+#endif
         std::cout << test_func(key, "eigen", eigen_funs, vals) << std::endl;
         std::cout << test_func(key, "hank10x", hank10x_funs, cvals);
         std::cout << "\n\n";
