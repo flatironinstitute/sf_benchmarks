@@ -755,11 +755,21 @@ int main(int argc, char *argv[]) {
 #endif
 
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
+        {"copy", [](const sctl_dx4::VData& x) {return x;}},
         {"exp", sctl::exp_intrin<sctl_dx4::VData>},
+        {"sin", [](const sctl_dx4::VData& x) {return sctl::approx_sin_intrin<16>(x);}},
+        {"cos", [](const sctl_dx4::VData& x) {return sctl::approx_cos_intrin<16>(x);}},
+        {"tan", [](const sctl_dx4::VData& x) {return sctl::approx_tan_intrin<16>(x);}},
+        {"rsqrt", [](const sctl_dx4::VData& x) {return sctl::rsqrt_approx_intrin<16,sctl_dx4::VData>::eval(x);}},
     };
 
     std::unordered_map<std::string, sctl_fun_dx8> sctl_funs_dx8 = {
+        {"copy", [](const sctl_dx8::VData& x) {return x;}},
         {"exp", sctl::exp_intrin<sctl_dx8::VData>},
+        {"sin", [](const sctl_dx8::VData& x) {return sctl::approx_sin_intrin<16>(x);}},
+        {"cos", [](const sctl_dx8::VData& x) {return sctl::approx_cos_intrin<16>(x);}},
+        {"tan", [](const sctl_dx8::VData& x) {return sctl::approx_tan_intrin<16>(x);}},
+        {"rsqrt", [](const sctl_dx8::VData& x) {return sctl::rsqrt_approx_intrin<16,sctl_dx8::VData>::eval(x);}},
     };
 
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
