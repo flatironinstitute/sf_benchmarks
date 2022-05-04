@@ -56,20 +56,21 @@ typedef sctl::Vec<double, 8> sctl_dx8;
 typedef std::function<double(double)> fun_dx1;
 typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
-typedef std::function<void(double*, const double*, size_t)> sctl_fun_dx4;
-typedef std::function<void(double*, const double*, size_t)> sctl_fun_dx8;
+typedef std::function<void(double *, const double *, size_t)> sctl_fun_dx4;
+typedef std::function<void(double *, const double *, size_t)> sctl_fun_dx8;
 typedef std::function<generic_dx4(generic_dx4)> generic_fun_dx4;
 typedef std::function<generic_dx8(generic_dx8)> generic_fun_dx8;
 
-template <class Real, int VecLen, class F> std::function<void(double*, const double*, size_t)> sctl_apply(const F& f) {
-  static const auto fn = [&f](Real* res, const Real* vals, size_t N) {
-    using Vec = sctl::Vec<Real,VecLen>;
-    for (size_t i = 0; i < N; i+=VecLen) {
-      Vec v = Vec::LoadAligned(vals + i);
-      f(v).StoreAligned(res + i);
-    }
-  };
-  return fn;
+template <class Real, int VecLen, class F>
+std::function<void(double *, const double *, size_t)> sctl_apply(const F &f) {
+    static const auto fn = [&f](Real *res, const Real *vals, size_t N) {
+        using Vec = sctl::Vec<Real, VecLen>;
+        for (size_t i = 0; i < N; i += VecLen) {
+            Vec v = Vec::LoadAligned(vals + i);
+            f(v).StoreAligned(res + i);
+        }
+    };
+    return fn;
 }
 
 extern "C" {
@@ -125,9 +126,9 @@ Eigen::VectorX<VAL_T> transform_domain(const Eigen::VectorX<VAL_T> &vals, double
 }
 
 template <typename FUN_T, typename VAL_T>
-BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
-                             const std::unordered_map<std::string, FUN_T> funs,
-                             std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in, size_t Nrepeat) {
+BenchResult<VAL_T>
+test_func(const std::string name, const std::string library_prefix, const std::unordered_map<std::string, FUN_T> funs,
+          std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in, size_t Nrepeat) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<VAL_T>(label);
@@ -136,7 +137,7 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     Eigen::VectorX<VAL_T> vals = transform_domain(vals_in, par.domain.first, par.domain.second);
 
     size_t res_size = vals.size();
-    size_t n_evals = vals.size()*Nrepeat;
+    size_t n_evals = vals.size() * Nrepeat;
     if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
         res_size *= 2;
     BenchResult<VAL_T> res(label, res_size, n_evals, par);
@@ -146,30 +147,30 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
 
     const struct timespec st = get_wtime();
     for (long k = 0; k < Nrepeat; k++)
-    if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
-        for (std::size_t i = 0; i < vals.size(); ++i)
-            resptr[i] = f(vals[i]);
-    } else if constexpr (std::is_same_v<FUN_T, baobzi::Baobzi &>) {
-        f(vals.data(), resptr, vals.size());
-    } else if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
-        for (std::size_t i = 0; i < vals.size(); ++i) {
-            std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
+        if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
+            for (std::size_t i = 0; i < vals.size(); ++i)
+                resptr[i] = f(vals[i]);
+        } else if constexpr (std::is_same_v<FUN_T, baobzi::Baobzi &>) {
+            f(vals.data(), resptr, vals.size());
+        } else if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
+            for (std::size_t i = 0; i < vals.size(); ++i) {
+                std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
+            }
+        } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
+            f(resptr, vals.data(), vals.size());
+        } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
+            f(resptr, vals.data(), vals.size());
+        } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx4>) {
+            for (std::size_t i = 0; i < vals.size(); i += 4) {
+                sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
+                _mm256_store_pd(resptr + i, f(x.get().v));
+            }
+        } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx8>) {
+            for (std::size_t i = 0; i < vals.size(); i += 8) {
+                sctl_dx8 x = sctl_dx8::LoadAligned(vals.data() + i);
+                _mm512_store_pd(resptr + i, f(x.get().v));
+            }
         }
-    } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
-        f(resptr, vals.data(), vals.size());
-    } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
-        f(resptr, vals.data(), vals.size());
-    } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx4>) {
-        for (std::size_t i = 0; i < vals.size(); i += 4) {
-            sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
-            _mm256_store_pd(resptr + i, f(x.get().v));
-        }
-    } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx8>) {
-        for (std::size_t i = 0; i < vals.size(); i += 8) {
-            sctl_dx8 x = sctl_dx8::LoadAligned(vals.data() + i);
-            _mm512_store_pd(resptr + i, f(x.get().v));
-        }
-    }
     const struct timespec ft = get_wtime();
 
     res.eval_time = get_wtime_diff(&st, &ft);
@@ -210,7 +211,8 @@ enum OPS {
 template <>
 BenchResult<double> test_func(const std::string name, const std::string library_prefix,
                               const std::unordered_map<std::string, OPS::OPS> funs,
-                              std::unordered_map<std::string, Params> params, const Eigen::VectorXd &vals_in, size_t Nrepeat) {
+                              std::unordered_map<std::string, Params> params, const Eigen::VectorXd &vals_in,
+                              size_t Nrepeat) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<double>(label);
@@ -218,7 +220,7 @@ BenchResult<double> test_func(const std::string name, const std::string library_
     const Params &par = params[name];
     Eigen::VectorXd x = transform_domain(vals_in, par.domain.first, par.domain.second);
 
-    BenchResult<double> res(label, x.size(), x.size()*Nrepeat, par);
+    BenchResult<double> res(label, x.size(), x.size() * Nrepeat, par);
 
     Eigen::VectorXd &res_eigen = res.res;
 
@@ -226,80 +228,80 @@ BenchResult<double> test_func(const std::string name, const std::string library_
     const struct timespec st = get_wtime();
 
     for (long k = 0; k < Nrepeat; k++)
-    switch (OP) {
-    case OPS::COS:
-        res_eigen = x.array().cos();
-        break;
-    case OPS::SIN:
-        res_eigen = x.array().sin();
-        break;
-    case OPS::TAN:
-        res_eigen = x.array().tan();
-        break;
-    case OPS::COSH:
-        res_eigen = x.array().cosh();
-        break;
-    case OPS::SINH:
-        res_eigen = x.array().sinh();
-        break;
-    case OPS::TANH:
-        res_eigen = x.array().tanh();
-        break;
-    case OPS::EXP:
-        res_eigen = x.array().exp();
-        break;
-    case OPS::LOG:
-        res_eigen = x.array().log();
-        break;
-    case OPS::LOG10:
-        res_eigen = x.array().log10();
-        break;
-    case OPS::POW35:
-        res_eigen = x.array().pow(3.5);
-        break;
-    case OPS::POW13:
-        res_eigen = x.array().pow(13);
-        break;
-    case OPS::ASIN:
-        res_eigen = x.array().asin();
-        break;
-    case OPS::ACOS:
-        res_eigen = x.array().acos();
-        break;
-    case OPS::ATAN:
-        res_eigen = x.array().atan();
-        break;
-    case OPS::ASINH:
-        res_eigen = x.array().asinh();
-        break;
-    case OPS::ACOSH:
-        res_eigen = x.array().acosh();
-        break;
-    case OPS::ATANH:
-        res_eigen = x.array().atanh();
-        break;
-    case OPS::ERF:
-        res_eigen = x.array().erf();
-        break;
-    case OPS::ERFC:
-        res_eigen = x.array().erfc();
-        break;
-    case OPS::LGAMMA:
-        res_eigen = x.array().lgamma();
-        break;
-    case OPS::DIGAMMA:
-        res_eigen = x.array().digamma();
-        break;
-    case OPS::NDTRI:
-        res_eigen = x.array().ndtri();
-        break;
-    case OPS::SQRT:
-        res_eigen = x.array().sqrt();
-        break;
-    case OPS::RSQRT:
-        res_eigen = x.array().rsqrt();
-        break;
-    }
+        switch (OP) {
+        case OPS::COS:
+            res_eigen = x.array().cos();
+            break;
+        case OPS::SIN:
+            res_eigen = x.array().sin();
+            break;
+        case OPS::TAN:
+            res_eigen = x.array().tan();
+            break;
+        case OPS::COSH:
+            res_eigen = x.array().cosh();
+            break;
+        case OPS::SINH:
+            res_eigen = x.array().sinh();
+            break;
+        case OPS::TANH:
+            res_eigen = x.array().tanh();
+            break;
+        case OPS::EXP:
+            res_eigen = x.array().exp();
+            break;
+        case OPS::LOG:
+            res_eigen = x.array().log();
+            break;
+        case OPS::LOG10:
+            res_eigen = x.array().log10();
+            break;
+        case OPS::POW35:
+            res_eigen = x.array().pow(3.5);
+            break;
+        case OPS::POW13:
+            res_eigen = x.array().pow(13);
+            break;
+        case OPS::ASIN:
+            res_eigen = x.array().asin();
+            break;
+        case OPS::ACOS:
+            res_eigen = x.array().acos();
+            break;
+        case OPS::ATAN:
+            res_eigen = x.array().atan();
+            break;
+        case OPS::ASINH:
+            res_eigen = x.array().asinh();
+            break;
+        case OPS::ACOSH:
+            res_eigen = x.array().acosh();
+            break;
+        case OPS::ATANH:
+            res_eigen = x.array().atanh();
+            break;
+        case OPS::ERF:
+            res_eigen = x.array().erf();
+            break;
+        case OPS::ERFC:
+            res_eigen = x.array().erfc();
+            break;
+        case OPS::LGAMMA:
+            res_eigen = x.array().lgamma();
+            break;
+        case OPS::DIGAMMA:
+            res_eigen = x.array().digamma();
+            break;
+        case OPS::NDTRI:
+            res_eigen = x.array().ndtri();
+            break;
+        case OPS::SQRT:
+            res_eigen = x.array().sqrt();
+            break;
+        case OPS::RSQRT:
+            res_eigen = x.array().rsqrt();
+            break;
+        }
 
     const struct timespec ft = get_wtime();
     res.eval_time = get_wtime_diff(&st, &ft);
@@ -501,7 +503,7 @@ int main(int argc, char *argv[]) {
         {"cos_pi", gsl_sf_cos_pi},
         {"sin", gsl_sf_sin},
         {"cos", gsl_sf_cos},
-        {"sinc", [](double x) -> double { return gsl_sf_sinc(x/M_PI); }},
+        {"sinc", [](double x) -> double { return gsl_sf_sinc(x / M_PI); }},
         {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(x); }},
         {"erf", gsl_sf_erf},
         {"erfc", gsl_sf_erfc},
@@ -809,19 +811,35 @@ int main(int argc, char *argv[]) {
 #endif
 
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
-        {"copy", sctl_apply<double, 4>( [](const sctl_dx4& x){return x;} )},
-        {"exp", sctl_apply<double, 4>( [](const sctl_dx4& x){return sctl::approx_exp<16>(x);} )},
-        {"sin", sctl_apply<double, 4>( [](const sctl_dx4& x){sctl_dx4 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return sinx;} )},
-        {"cos", sctl_apply<double, 4>( [](const sctl_dx4& x){sctl_dx4 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return cosx;} )},
-        {"rsqrt", sctl_apply<double, 4>( [](const sctl_dx4& x){return sctl::approx_rsqrt<16>(x);} )},
+        {"copy", sctl_apply<double, 4>([](const sctl_dx4 &x) { return x; })},
+        {"exp", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_exp<16>(x); })},
+        {"sin", sctl_apply<double, 4>([](const sctl_dx4 &x) {
+             sctl_dx4 sinx, cosx;
+             sctl::approx_sincos<16>(sinx, cosx, x);
+             return sinx;
+         })},
+        {"cos", sctl_apply<double, 4>([](const sctl_dx4 &x) {
+             sctl_dx4 sinx, cosx;
+             sctl::approx_sincos<16>(sinx, cosx, x);
+             return cosx;
+         })},
+        {"rsqrt", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_rsqrt<16>(x); })},
     };
 
     std::unordered_map<std::string, sctl_fun_dx8> sctl_funs_dx8 = {
-        {"copy", sctl_apply<double, 8>( [](const sctl_dx8& x){return x;} )},
-        {"exp", sctl_apply<double, 8>( [](const sctl_dx8& x){return sctl::approx_exp<16>(x);} )},
-        {"sin", sctl_apply<double, 8>( [](const sctl_dx8& x){sctl_dx8 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return sinx;} )},
-        {"cos", sctl_apply<double, 8>( [](const sctl_dx8& x){sctl_dx8 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return cosx;} )},
-        {"rsqrt", sctl_apply<double, 8>( [](const sctl_dx8& x){return sctl::approx_rsqrt<16>(x);} )},
+        {"copy", sctl_apply<double, 8>([](const sctl_dx8 &x) { return x; })},
+        {"exp", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_exp<16>(x); })},
+        {"sin", sctl_apply<double, 8>([](const sctl_dx8 &x) {
+             sctl_dx8 sinx, cosx;
+             sctl::approx_sincos<16>(sinx, cosx, x);
+             return sinx;
+         })},
+        {"cos", sctl_apply<double, 8>([](const sctl_dx8 &x) {
+             sctl_dx8 sinx, cosx;
+             sctl::approx_sincos<16>(sinx, cosx, x);
+             return cosx;
+         })},
+        {"rsqrt", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_rsqrt<16>(x); })},
     };
 
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
