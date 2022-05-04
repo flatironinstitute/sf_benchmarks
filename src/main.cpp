@@ -56,10 +56,21 @@ typedef sctl::Vec<double, 8> sctl_dx8;
 typedef std::function<double(double)> fun_dx1;
 typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
-typedef std::function<sctl_dx4::VData(const sctl_dx4::VData &)> sctl_fun_dx4;
-typedef std::function<sctl_dx8::VData(const sctl_dx8::VData &)> sctl_fun_dx8;
+typedef std::function<void(double*, const double*, size_t)> sctl_fun_dx4;
+typedef std::function<void(double*, const double*, size_t)> sctl_fun_dx8;
 typedef std::function<generic_dx4(generic_dx4)> generic_fun_dx4;
 typedef std::function<generic_dx8(generic_dx8)> generic_fun_dx8;
+
+template <class Real, int VecLen, class F> std::function<void(double*, const double*, size_t)> sctl_apply(const F& f) {
+  static const auto fn = [&f](Real* res, const Real* vals, size_t N) {
+    using Vec = sctl::Vec<Real,VecLen>;
+    for (size_t i = 0; i < N; i+=VecLen) {
+      Vec v = Vec::LoadAligned(vals + i);
+      f(v).StoreAligned(res + i);
+    }
+  };
+  return fn;
+}
 
 extern "C" {
 void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
@@ -114,7 +125,7 @@ Eigen::VectorX<VAL_T> transform_domain(const Eigen::VectorX<VAL_T> &vals, double
 template <typename FUN_T, typename VAL_T>
 BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
                              const std::unordered_map<std::string, FUN_T> funs,
-                             std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in) {
+                             std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in, size_t Nrepeat) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<VAL_T>(label);
@@ -123,7 +134,7 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     Eigen::VectorX<VAL_T> vals = transform_domain(vals_in, par.domain.first, par.domain.second);
 
     size_t res_size = vals.size();
-    size_t n_evals = vals.size();
+    size_t n_evals = vals.size()*Nrepeat;
     if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
         res_size *= 2;
     BenchResult<VAL_T> res(label, res_size, n_evals, par);
@@ -132,6 +143,7 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     const FUN_T &f = funs.at(name);
 
     const struct timespec st = get_wtime();
+    for (long k = 0; k < Nrepeat; k++)
     if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
         for (std::size_t i = 0; i < vals.size(); ++i)
             resptr[i] = f(vals[i]);
@@ -142,15 +154,9 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
             std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
         }
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
-        for (std::size_t i = 0; i < vals.size(); i += 4) {
-            sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
-            sctl_dx4(f(x.get())).StoreAligned(resptr + i);
-        }
+        f(resptr, vals.data(), vals.size());
     } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
-        for (std::size_t i = 0; i < vals.size(); i += 8) {
-            sctl_dx8 x = sctl_dx8::LoadAligned(vals.data() + i);
-            sctl_dx8(f(x.get())).StoreAligned(resptr + i);
-        }
+        f(resptr, vals.data(), vals.size());
     } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx4>) {
         for (std::size_t i = 0; i < vals.size(); i += 4) {
             sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
@@ -202,7 +208,7 @@ enum OPS {
 template <>
 BenchResult<double> test_func(const std::string name, const std::string library_prefix,
                               const std::unordered_map<std::string, OPS::OPS> funs,
-                              std::unordered_map<std::string, Params> params, const Eigen::VectorXd &vals_in) {
+                              std::unordered_map<std::string, Params> params, const Eigen::VectorXd &vals_in, size_t Nrepeat) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
         return BenchResult<double>(label);
@@ -210,13 +216,14 @@ BenchResult<double> test_func(const std::string name, const std::string library_
     const Params &par = params[name];
     Eigen::VectorXd x = transform_domain(vals_in, par.domain.first, par.domain.second);
 
-    BenchResult<double> res(label, x.size(), x.size(), par);
+    BenchResult<double> res(label, x.size(), x.size()*Nrepeat, par);
 
     Eigen::VectorXd &res_eigen = res.res;
 
     OPS::OPS OP = funs.at(name);
     const struct timespec st = get_wtime();
 
+    for (long k = 0; k < Nrepeat; k++)
     switch (OP) {
     case OPS::COS:
         res_eigen = x.array().cos();
@@ -447,8 +454,8 @@ int main(int argc, char *argv[]) {
         {"cos_pi", gsl_sf_cos_pi},
         {"sin", gsl_sf_sin},
         {"cos", gsl_sf_cos},
-        {"sinc", gsl_sf_sinc},
-        {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(M_PI * x); }},
+        {"sinc", [](double x) -> double { return gsl_sf_sinc(x/M_PI); }},
+        {"sinc_pi", [](double x) -> double { return gsl_sf_sinc(x); }},
         {"erf", gsl_sf_erf},
         {"erfc", gsl_sf_erfc},
         {"tgamma", gsl_sf_gamma},
@@ -755,21 +762,19 @@ int main(int argc, char *argv[]) {
 #endif
 
     std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
-        {"copy", [](const sctl_dx4::VData& x) {return x;}},
-        {"exp", sctl::exp_intrin<sctl_dx4::VData>},
-        {"sin", [](const sctl_dx4::VData& x) {return sctl::approx_sin_intrin<16>(x);}},
-        {"cos", [](const sctl_dx4::VData& x) {return sctl::approx_cos_intrin<16>(x);}},
-        {"tan", [](const sctl_dx4::VData& x) {return sctl::approx_tan_intrin<16>(x);}},
-        {"rsqrt", [](const sctl_dx4::VData& x) {return sctl::rsqrt_approx_intrin<16,sctl_dx4::VData>::eval(x);}},
+        {"copy", sctl_apply<double, 4>( [](const sctl_dx4& x){return x;} )},
+        {"exp", sctl_apply<double, 4>( [](const sctl_dx4& x){return sctl::approx_exp<16>(x);} )},
+        {"sin", sctl_apply<double, 4>( [](const sctl_dx4& x){sctl_dx4 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return sinx;} )},
+        {"cos", sctl_apply<double, 4>( [](const sctl_dx4& x){sctl_dx4 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return cosx;} )},
+        {"rsqrt", sctl_apply<double, 4>( [](const sctl_dx4& x){return sctl::approx_rsqrt<16>(x);} )},
     };
 
     std::unordered_map<std::string, sctl_fun_dx8> sctl_funs_dx8 = {
-        {"copy", [](const sctl_dx8::VData& x) {return x;}},
-        {"exp", sctl::exp_intrin<sctl_dx8::VData>},
-        {"sin", [](const sctl_dx8::VData& x) {return sctl::approx_sin_intrin<16>(x);}},
-        {"cos", [](const sctl_dx8::VData& x) {return sctl::approx_cos_intrin<16>(x);}},
-        {"tan", [](const sctl_dx8::VData& x) {return sctl::approx_tan_intrin<16>(x);}},
-        {"rsqrt", [](const sctl_dx8::VData& x) {return sctl::rsqrt_approx_intrin<16,sctl_dx8::VData>::eval(x);}},
+        {"copy", sctl_apply<double, 8>( [](const sctl_dx8& x){return x;} )},
+        {"exp", sctl_apply<double, 8>( [](const sctl_dx8& x){return sctl::approx_exp<16>(x);} )},
+        {"sin", sctl_apply<double, 8>( [](const sctl_dx8& x){sctl_dx8 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return sinx;} )},
+        {"cos", sctl_apply<double, 8>( [](const sctl_dx8& x){sctl_dx8 sinx, cosx; sctl::approx_sincos<16>(sinx,cosx,x); return cosx;} )},
+        {"rsqrt", sctl_apply<double, 8>( [](const sctl_dx8& x){return sctl::approx_rsqrt<16>(x);} )},
     };
 
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
@@ -820,33 +825,33 @@ int main(int argc, char *argv[]) {
     else
         keys_to_eval = fun_union;
 
-    constexpr int NEvals = 1E7;
+    constexpr int NEvals = 1024, Nrepeat = 1e4;
     Eigen::VectorXd vals = 0.5 * (Eigen::ArrayXd::Random(NEvals) + 1.0);
     Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
 
     for (auto key : keys_to_eval) {
-        std::cout << test_func(key, "std", std_funs, params, vals);
-        std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals);
-        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals);
-        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals);
+        std::cout << test_func(key, "std", std_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, Nrepeat);
+        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, Nrepeat);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals);
+        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, Nrepeat);
 #endif
-        std::cout << test_func(key, "boost", boost_funs, params, vals);
-        std::cout << test_func(key, "gsl", gsl_funs, params, vals);
-        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals);
-        std::cout << test_func(key, "sleef", sleef_funs, params, vals);
-        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals);
+        std::cout << test_func(key, "boost", boost_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "gsl", gsl_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals, Nrepeat);
+        std::cout << test_func(key, "sleef", sleef_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, Nrepeat);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals);
+        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, Nrepeat);
 #endif
-        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals);
+        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, Nrepeat);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals);
+        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, Nrepeat);
 #endif
-        std::cout << test_func(key, "eigen", eigen_funs, params, vals);
-        std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals);
-        std::cout << test_func(key, "baobzi", baobzi_funs, params, vals);
+        std::cout << test_func(key, "eigen", eigen_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals, Nrepeat);
+        std::cout << test_func(key, "baobzi", baobzi_funs, params, vals, Nrepeat);
         std::cout << "\n";
     }
 
