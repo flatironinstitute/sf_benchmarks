@@ -437,50 +437,50 @@ int main(int argc, char *argv[]) {
         {"bessel_Y1", baobzi_bessel_Y1},
     };
 
-    // std::unordered_map<std::string, fun_dx1> fort_funs = {
-    //     {"bessel_Y0",
-    //      [](double x) -> double {
-    //          int n = 0;
-    //          double y;
-    //          fort_bessel_yn_(&n, &x, &y);
-    //          return y;
-    //      }},
-    //     {"bessel_Y1",
-    //      [](double x) -> double {
-    //          int n = 2;
-    //          double y;
-    //          fort_bessel_yn_(&n, &x, &y);
-    //          return y;
-    //      }},
-    //     {"bessel_Y2",
-    //      [](double x) -> double {
-    //          int n = 2;
-    //          double y;
-    //          fort_bessel_yn_(&n, &x, &y);
-    //          return y;
-    //      }},
-    //     {"bessel_J0",
-    //      [](double x) -> double {
-    //          int n = 0;
-    //          double y;
-    //          fort_bessel_jn_(&n, &x, &y);
-    //          return y;
-    //      }},
-    //     {"bessel_J1",
-    //      [](double x) -> double {
-    //          int n = 2;
-    //          double y;
-    //          fort_bessel_jn_(&n, &x, &y);
-    //          return y;
-    //      }},
-    //     {"bessel_J2",
-    //      [](double x) -> double {
-    //          int n = 2;
-    //          double y;
-    //          fort_bessel_jn_(&n, &x, &y);
-    //          return y;
-    //      }},
-    // };
+    std::unordered_map<std::string, fun_dx1> fort_funs = {
+        {"bessel_Y0",
+         [](double x) -> double {
+             int n = 0;
+             double y;
+             fort_bessel_yn_(&n, &x, &y);
+             return y;
+         }},
+        //     {"bessel_Y1",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_yn_(&n, &x, &y);
+        //          return y;
+        //      }},
+        //     {"bessel_Y2",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_yn_(&n, &x, &y);
+        //          return y;
+        //      }},
+        {"bessel_J0",
+         [](double x) -> double {
+             int n = 0;
+             double y;
+             fort_bessel_jn_(&n, &x, &y);
+             return y;
+         }},
+        //     {"bessel_J1",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_jn_(&n, &x, &y);
+        //          return y;
+        //      }},
+        //     {"bessel_J2",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_jn_(&n, &x, &y);
+        //          return y;
+        //      }},
+    };
 
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
         {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
