@@ -74,6 +74,8 @@ template <class Real, int VecLen, class F> std::function<void(double*, const dou
 
 extern "C" {
 void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
+void fort_bessel_jn_(int *, double *, double *);
+void fort_bessel_yn_(int *, double *, double *);
 }
 
 template <typename VAL_T>
@@ -372,7 +374,7 @@ double baobzi_fun_wrapper(const double *x, const void *data) {
     return myfun(*x);
 }
 
-baobzi::Baobzi create_baobzi_func(void* infun, const std::pair<double, double> &domain) {
+baobzi::Baobzi create_baobzi_func(void *infun, const std::pair<double, double> &domain) {
     baobzi_input_t input = {.func = baobzi_fun_wrapper,
                             .data = infun,
                             .dim = 1,
@@ -434,12 +436,57 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
 
-    baobzi::Baobzi baobzi_bessel_Y0 = create_baobzi_func((void*) gsl_sf_bessel_Y0, params["bessel_Y0"].domain);
+    baobzi::Baobzi baobzi_bessel_Y0 = create_baobzi_func((void *)gsl_sf_bessel_Y0, params["bessel_Y0"].domain);
     baobzi::Baobzi baobzi_bessel_Y1 = create_baobzi_func((void *)gsl_sf_bessel_Y1, params["bessel_Y1"].domain);
 
     std::unordered_map<std::string, baobzi::Baobzi &> baobzi_funs{
         {"bessel_Y0", baobzi_bessel_Y0},
         {"bessel_Y1", baobzi_bessel_Y1},
+    };
+
+    std::unordered_map<std::string, fun_dx1> fort_funs = {
+        {"bessel_Y0",
+         [](double x) -> double {
+             int n = 0;
+             double y;
+             fort_bessel_yn_(&n, &x, &y);
+             return y;
+         }},
+        //     {"bessel_Y1",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_yn_(&n, &x, &y);
+        //          return y;
+        //      }},
+        //     {"bessel_Y2",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_yn_(&n, &x, &y);
+        //          return y;
+        //      }},
+        {"bessel_J0",
+         [](double x) -> double {
+             int n = 0;
+             double y;
+             fort_bessel_jn_(&n, &x, &y);
+             return y;
+         }},
+        //     {"bessel_J1",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_jn_(&n, &x, &y);
+        //          return y;
+        //      }},
+        //     {"bessel_J2",
+        //      [](double x) -> double {
+        //          int n = 2;
+        //          double y;
+        //          fort_bessel_jn_(&n, &x, &y);
+        //          return y;
+        //      }},
     };
 
     std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
@@ -809,6 +856,8 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
+    for (auto kv : fort_funs)
+        fun_union.insert(kv.first);
 #ifdef __AVX512F__
     for (auto kv : sctl_funs_dx8)
         fun_union.insert(kv.first);
@@ -831,6 +880,7 @@ int main(int argc, char *argv[]) {
 
     for (auto key : keys_to_eval) {
         std::cout << test_func(key, "std", std_funs, params, vals, Nrepeat);
+        std::cout << test_func(key, "fort", fort_funs, params, vals, Nrepeat);
         std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals, Nrepeat);
         std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, Nrepeat);
         std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, Nrepeat);
