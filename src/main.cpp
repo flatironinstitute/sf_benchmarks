@@ -58,6 +58,8 @@ typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 typedef std::function<void(double *, const double *, size_t)> sctl_fun_dx4;
 typedef std::function<void(double *, const double *, size_t)> sctl_fun_dx8;
+typedef std::function<void(double *, const double *, size_t)> af_fun_dx4;
+typedef std::function<void(double *, const double *, size_t)> af_fun_dx8;
 typedef std::function<generic_dx4(generic_dx4)> generic_fun_dx4;
 typedef std::function<generic_dx8(generic_dx8)> generic_fun_dx8;
 
@@ -68,6 +70,18 @@ std::function<void(double *, const double *, size_t)> sctl_apply(const F &f) {
         for (size_t i = 0; i < N; i += VecLen) {
             Vec v = Vec::LoadAligned(vals + i);
             f(v).StoreAligned(res + i);
+        }
+    };
+    return fn;
+}
+
+template <class VEC_T, class Real, class F>
+std::function<void(double *, const double *, size_t)> af_apply(const F &f) {
+    static const auto fn = [&f](Real *res, const Real *vals, size_t N) {
+        for (size_t i = 0; i < N; i += VEC_T::size()) {
+            VEC_T x;
+            x.load(vals + i);
+            f(x).store_a(res + i);
         }
     };
     return fn;
@@ -760,53 +774,53 @@ int main(int argc, char *argv[]) {
     };
 #endif
 
-    std::unordered_map<std::string, generic_fun_dx4> af_funs_dx4 = {
-        {"sqrt", [](Vec4d x) -> Vec4d { return sqrt(x); }},
-        {"sin", [](Vec4d x) -> Vec4d { return sin(x); }},
-        {"cos", [](Vec4d x) -> Vec4d { return cos(x); }},
-        {"tan", [](Vec4d x) -> Vec4d { return tan(x); }},
-        {"sinh", [](Vec4d x) -> Vec4d { return sinh(x); }},
-        {"cosh", [](Vec4d x) -> Vec4d { return cosh(x); }},
-        {"tanh", [](Vec4d x) -> Vec4d { return tanh(x); }},
-        {"asinh", [](Vec4d x) -> Vec4d { return asinh(x); }},
-        {"acosh", [](Vec4d x) -> Vec4d { return acosh(x); }},
-        {"atanh", [](Vec4d x) -> Vec4d { return atanh(x); }},
-        {"asin", [](Vec4d x) -> Vec4d { return asin(x); }},
-        {"acos", [](Vec4d x) -> Vec4d { return acos(x); }},
-        {"atan", [](Vec4d x) -> Vec4d { return atan(x); }},
-        {"exp", [](Vec4d x) -> Vec4d { return exp(x); }},
-        {"exp2", [](Vec4d x) -> Vec4d { return exp2(x); }},
-        {"exp10", [](Vec4d x) -> Vec4d { return exp10(x); }},
-        {"log", [](Vec4d x) -> Vec4d { return log(x); }},
-        {"log2", [](Vec4d x) -> Vec4d { return log2(x); }},
-        {"log10", [](Vec4d x) -> Vec4d { return log10(x); }},
-        {"pow3.5", [](Vec4d x) -> Vec4d { return pow(x, 3.5); }},
-        {"pow13", [](Vec4d x) -> Vec4d { return pow_const(x, 13); }},
+    std::unordered_map<std::string, af_fun_dx4> af_funs_dx4 = {
+        {"sqrt", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sqrt(x); })},
+        {"sin", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sin(x); })},
+        {"cos", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cos(x); })},
+        {"tan", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return tan(x); })},
+        {"sinh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sinh(x); })},
+        {"cosh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cosh(x); })},
+        {"tanh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return tanh(x); })},
+        {"asinh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return asinh(x); })},
+        {"acosh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return acosh(x); })},
+        {"atanh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return atanh(x); })},
+        {"asin", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return asin(x); })},
+        {"acos", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return acos(x); })},
+        {"atan", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return atan(x); })},
+        {"exp", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp(x); })},
+        {"exp2", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp2(x); })},
+        {"exp10", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp10(x); })},
+        {"log", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log(x); })},
+        {"log2", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log2(x); })},
+        {"log10", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log10(x); })},
+        {"pow3.5", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return pow(x, 3.5); })},
+        {"pow13", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return pow_const(x, 13); })},
     };
 
 #ifdef __AVX512F__
-    std::unordered_map<std::string, generic_fun_dx8> af_funs_dx8 = {
-        {"sqrt", [](Vec8d x) -> Vec8d { return sqrt(x); }},
-        {"sin", [](Vec8d x) -> Vec8d { return sin(x); }},
-        {"cos", [](Vec8d x) -> Vec8d { return cos(x); }},
-        {"tan", [](Vec8d x) -> Vec8d { return tan(x); }},
-        {"sinh", [](Vec8d x) -> Vec8d { return sinh(x); }},
-        {"cosh", [](Vec8d x) -> Vec8d { return cosh(x); }},
-        {"tanh", [](Vec8d x) -> Vec8d { return tanh(x); }},
-        {"asinh", [](Vec8d x) -> Vec8d { return asinh(x); }},
-        {"acosh", [](Vec8d x) -> Vec8d { return acosh(x); }},
-        {"atanh", [](Vec8d x) -> Vec8d { return atanh(x); }},
-        {"asin", [](Vec8d x) -> Vec8d { return asin(x); }},
-        {"acos", [](Vec8d x) -> Vec8d { return acos(x); }},
-        {"atan", [](Vec8d x) -> Vec8d { return atan(x); }},
-        {"exp", [](Vec8d x) -> Vec8d { return exp(x); }},
-        {"exp2", [](Vec8d x) -> Vec8d { return exp2(x); }},
-        {"exp10", [](Vec8d x) -> Vec8d { return exp10(x); }},
-        {"log", [](Vec8d x) -> Vec8d { return log(x); }},
-        {"log2", [](Vec8d x) -> Vec8d { return log2(x); }},
-        {"log10", [](Vec8d x) -> Vec8d { return log10(x); }},
-        {"pow3.5", [](Vec8d x) -> Vec8d { return pow(x, 3.5); }},
-        {"pow13", [](Vec8d x) -> Vec8d { return pow_const(x, 13); }},
+    std::unordered_map<std::string, af_fun_dx8> af_funs_dx8 = {
+        {"sqrt", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sqrt(x); })},
+        {"sin", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sin(x); })},
+        {"cos", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cos(x); })},
+        {"tan", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return tan(x); })},
+        {"sinh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sinh(x); })},
+        {"cosh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cosh(x); })},
+        {"tanh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return tanh(x); })},
+        {"asinh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return asinh(x); })},
+        {"acosh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return acosh(x); })},
+        {"atanh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return atanh(x); })},
+        {"asin", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return asin(x); })},
+        {"acos", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return acos(x); })},
+        {"atan", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return atan(x); })},
+        {"exp", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp(x); })},
+        {"exp2", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp2(x); })},
+        {"exp10", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp10(x); })},
+        {"log", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log(x); })},
+        {"log2", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log2(x); })},
+        {"log10", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log10(x); })},
+        {"pow3.5", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return pow(x, 3.5); })},
+        {"pow13", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return pow_const(x, 13); })},
     };
 #endif
 
@@ -892,36 +906,39 @@ int main(int argc, char *argv[]) {
     else
         keys_to_eval = fun_union;
 
-    constexpr int NEvals = 1024, Nrepeat = 1e4;
-    Eigen::VectorXd vals = 0.5 * (Eigen::ArrayXd::Random(NEvals) + 1.0);
-    Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
+    const std::vector<std::pair<int, int>> run_sets = {{1024, 1e4}, {1024 * 1e4, 1}};
+    for (auto &run_set : run_sets) {
+        const auto &[NEvals, Nrepeat] = run_set;
+        std::cerr << "Running benchmark with input vector of length " << NEvals << " and " << Nrepeat << " repeats.\n";
+        Eigen::VectorXd vals = 0.5 * (Eigen::ArrayXd::Random(NEvals) + 1.0);
+        Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
 
-    for (auto key : keys_to_eval) {
-        std::cout << test_func(key, "std", std_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "fort", fort_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, Nrepeat);
-        std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, Nrepeat);
+        for (auto key : keys_to_eval) {
+            std::cout << test_func(key, "std", std_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "fort", fort_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, Nrepeat);
+            std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, Nrepeat);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, Nrepeat);
+            std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, Nrepeat);
 #endif
-        std::cout << test_func(key, "boost", boost_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "gsl", gsl_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals, Nrepeat);
-        std::cout << test_func(key, "sleef", sleef_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, Nrepeat);
+            std::cout << test_func(key, "boost", boost_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "gsl", gsl_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals, Nrepeat);
+            std::cout << test_func(key, "sleef", sleef_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, Nrepeat);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, Nrepeat);
+            std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, Nrepeat);
 #endif
-        std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, Nrepeat);
+            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, Nrepeat);
 #ifdef __AVX512F__
-        std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, Nrepeat);
+            std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, Nrepeat);
 #endif
-        std::cout << test_func(key, "eigen", eigen_funs, params, vals, Nrepeat);
-        std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals, Nrepeat);
-        std::cout << test_func(key, "baobzi", baobzi_funs, params, vals, Nrepeat);
-        std::cout << "\n";
+            std::cout << test_func(key, "eigen", eigen_funs, params, vals, Nrepeat);
+            std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals, Nrepeat);
+            std::cout << test_func(key, "baobzi", baobzi_funs, params, vals, Nrepeat);
+            std::cout << "\n";
+        }
     }
-
     return 0;
 }
