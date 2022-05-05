@@ -44,7 +44,7 @@ include_directories(
 )
 link_directories(${CMAKE_BINARY_DIR}/contrib/lib64 ${PROJECT_SOURCE_DIR}/extern/amd-libm/lib)
 
-file(GLOB SF_SOURCES "src/main.cpp" "src/hank103.f" "src/bessel.f")
+file(GLOB SF_SOURCES "src/main.cpp" "src/hank103.f" "src/bessel.f" "src/hank106.f")
 add_executable(sf_benchmarks ${SF_SOURCES})
 target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES} ${GSL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 target_link_libraries(sf_benchmarks sleef gsl baobzi dl)
