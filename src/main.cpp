@@ -171,6 +171,8 @@ test_func(const std::string name, const std::string library_prefix, const std::u
             for (std::size_t i = 0; i < vals.size(); ++i) {
                 std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
             }
+        } else if constexpr (std::is_same_v<FUN_T, std::shared_ptr<baobzi::Baobzi>>) {
+            (*f)(vals.data(), resptr, vals.size());
         } else {
             f(vals.data(), resptr, vals.size());
         }
@@ -380,7 +382,7 @@ double baobzi_fun_wrapper(const double *x, const void *data) {
     return myfun(*x);
 }
 
-baobzi::Baobzi create_baobzi_func(void *infun, const std::pair<double, double> &domain) {
+std::shared_ptr<baobzi::Baobzi> create_baobzi_func(void *infun, const std::pair<double, double> &domain) {
     baobzi_input_t input = {.func = baobzi_fun_wrapper,
                             .data = infun,
                             .dim = 1,
@@ -391,7 +393,7 @@ baobzi::Baobzi create_baobzi_func(void *infun, const std::pair<double, double> &
     double hl = 0.5 * (domain.second - domain.first);
     double center = domain.first + hl;
 
-    return baobzi::Baobzi(&input, &center, &hl);
+    return std::shared_ptr<baobzi::Baobzi>(new baobzi::Baobzi(&input, &center, &hl));
 }
 
 int main(int argc, char *argv[]) {
@@ -442,12 +444,9 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
 
-    baobzi::Baobzi baobzi_bessel_Y0 = create_baobzi_func((void *)gsl_sf_bessel_Y0, params["bessel_Y0"].domain);
-    baobzi::Baobzi baobzi_bessel_Y1 = create_baobzi_func((void *)gsl_sf_bessel_Y1, params["bessel_Y1"].domain);
-
-    std::unordered_map<std::string, baobzi::Baobzi &> baobzi_funs{
-        {"bessel_Y0", baobzi_bessel_Y0},
-        {"bessel_Y1", baobzi_bessel_Y1},
+    std::unordered_map<std::string, std::shared_ptr<baobzi::Baobzi>> baobzi_funs{
+        {"bessel_Y0", create_baobzi_func((void *)gsl_sf_bessel_Y0, params["bessel_Y0"].domain)},
+        {"bessel_J0", create_baobzi_func((void *)gsl_sf_bessel_J0, params["bessel_J0"].domain)},
     };
 
     std::unordered_map<std::string, scalar_function<double>> fort_funs = {
