@@ -52,12 +52,10 @@ typedef sctl::Vec<double, 4> sctl_dx4;
 typedef sctl::Vec<double, 8> sctl_dx8;
 
 typedef std::function<double(double)> fun_dx1;
-typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 
-typedef std::function<void(const double *, double *, size_t)> vec_function;
 template <class Real>
-using scalar_function = std::function<void(const Real *, Real *, size_t)>;
+using multi_eval_func = std::function<void(const Real *, Real *, size_t)>;
 
 template <class Real, int VecLen, class F>
 std::function<void(const double *, double *, size_t)> sctl_apply(const F &f) {
@@ -444,7 +442,7 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
 
-    std::unordered_map<std::string, scalar_function<double>> fort_funs = {
+    std::unordered_map<std::string, multi_eval_func<double>> fort_funs = {
         {"bessel_Y0", scalar_func_apply<double>([](double x) -> double {
              int n = 0;
              double y;
@@ -467,7 +465,7 @@ int main(int argc, char *argv[]) {
              return {h0, h1};
          }}};
 
-    std::unordered_map<std::string, scalar_function<double>> gsl_funs = {
+    std::unordered_map<std::string, multi_eval_func<double>> gsl_funs = {
         {"sin_pi", scalar_func_apply<double>([](double x) -> double { return gsl_sf_sin_pi(x); })},
         {"cos_pi", scalar_func_apply<double>([](double x) -> double { return gsl_sf_cos_pi(x); })},
         {"sin", scalar_func_apply<double>([](double x) -> double { return gsl_sf_sin(x); })},
@@ -507,7 +505,7 @@ int main(int argc, char *argv[]) {
     };
 
     // FIXME: check accuracy of this and this+test_func
-    std::unordered_map<std::string, scalar_function<cdouble>> gsl_complex_funs = {
+    std::unordered_map<std::string, multi_eval_func<cdouble>> gsl_complex_funs = {
         {"sin",
          scalar_func_apply<cdouble>([](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_sin_e); })},
         {"cos",
@@ -520,7 +518,7 @@ int main(int argc, char *argv[]) {
                        [](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_lngamma_complex_e); })},
     };
 
-    std::unordered_map<std::string, scalar_function<double>> boost_funs = {
+    std::unordered_map<std::string, multi_eval_func<double>> boost_funs = {
         {"sin_pi", scalar_func_apply<double>([](double x) -> double { return boost::math::sin_pi(x); })},
         {"cos_pi", scalar_func_apply<double>([](double x) -> double { return boost::math::cos_pi(x); })},
         {"tgamma", scalar_func_apply<double>([](double x) -> double { return boost::math::tgamma<double>(x); })},
@@ -555,7 +553,7 @@ int main(int argc, char *argv[]) {
         {"riemann_zeta", scalar_func_apply<double>([](double x) -> double { return boost::math::zeta(x); })},
     };
 
-    std::unordered_map<std::string, scalar_function<double>> std_funs = {
+    std::unordered_map<std::string, multi_eval_func<double>> std_funs = {
         {"tgamma", scalar_func_apply<double>([](double x) -> double { return std::tgamma(x); })},
         {"lgamma", scalar_func_apply<double>([](double x) -> double { return std::lgamma(x); })},
         {"sin", scalar_func_apply<double>([](double x) -> double { return std::sin(x); })},
@@ -589,7 +587,7 @@ int main(int argc, char *argv[]) {
         {"pow13", scalar_func_apply<double>([](double x) -> double { return std::pow(x, 13); })},
     };
 
-    std::unordered_map<std::string, scalar_function<double>> amdlibm_funs = {
+    std::unordered_map<std::string, multi_eval_func<double>> amdlibm_funs = {
         {"sin", scalar_func_apply<double>([&amd_sin](double x) -> double { return amd_sin(x); })},
         {"cos", scalar_func_apply<double>([&amd_cos](double x) -> double { return amd_cos(x); })},
         {"tan", scalar_func_apply<double>([&amd_tan](double x) -> double { return amd_tan(x); })},
@@ -614,7 +612,7 @@ int main(int argc, char *argv[]) {
     };
 
     Vec4d x;
-    std::unordered_map<std::string, vec_function> amdlibm_funs_dx4 = {
+    std::unordered_map<std::string, multi_eval_func<double>> amdlibm_funs_dx4 = {
         {"sin", vec_func_apply<Vec4d, double>([&amd_vrd4_sin](Vec4d x) -> Vec4d { return amd_vrd4_sin(x); })},
         {"cos", vec_func_apply<Vec4d, double>([&amd_vrd4_cos](Vec4d x) -> Vec4d { return amd_vrd4_cos(x); })},
         {"tan", vec_func_apply<Vec4d, double>([&amd_vrd4_tan](Vec4d x) -> Vec4d { return amd_vrd4_tan(x); })},
@@ -628,7 +626,7 @@ int main(int argc, char *argv[]) {
          vec_func_apply<Vec4d, double>([&amd_vrd4_pow](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{13}); })},
     };
 
-    std::unordered_map<std::string, scalar_function<double>> sleef_funs = {
+    std::unordered_map<std::string, multi_eval_func<double>> sleef_funs = {
         {"sin_pi", scalar_func_apply<double>([](double x) -> double { return Sleef_sinpid1_u05purecfma(x); })},
         {"cos_pi", scalar_func_apply<double>([](double x) -> double { return Sleef_cospid1_u05purecfma(x); })},
         {"sin", scalar_func_apply<double>([](double x) -> double { return Sleef_sind1_u10purecfma(x); })},
@@ -658,7 +656,7 @@ int main(int argc, char *argv[]) {
         {"pow13", scalar_func_apply<double>([](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); })},
     };
 
-    std::unordered_map<std::string, vec_function> sleef_funs_dx4 = {
+    std::unordered_map<std::string, multi_eval_func<double>> sleef_funs_dx4 = {
         {"sin_pi", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sinpid4_u05avx2(x); })},
         {"cos_pi", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_cospid4_u05avx2(x); })},
         {"sin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sind4_u10avx2(x); })},
@@ -689,7 +687,7 @@ int main(int argc, char *argv[]) {
     };
 
 #ifdef __AVX512F__
-    std::unordered_map<std::string, vec_function> sleef_funs_dx8 = {
+    std::unordered_map<std::string, multi_eval_func<double>> sleef_funs_dx8 = {
         {"sin_pi", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sinpid8_u05avx512f(x); })},
         {"cos_pi", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_cospid8_u05avx512f(x); })},
         {"sin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sind8_u10avx512f(x); })},
@@ -721,7 +719,7 @@ int main(int argc, char *argv[]) {
     };
 #endif
 
-    std::unordered_map<std::string, vec_function> af_funs_dx4 = {
+    std::unordered_map<std::string, multi_eval_func<double>> af_funs_dx4 = {
         {"sqrt", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sqrt(x); })},
         {"sin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sin(x); })},
         {"cos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cos(x); })},
@@ -746,7 +744,7 @@ int main(int argc, char *argv[]) {
     };
 
 #ifdef __AVX512F__
-    std::unordered_map<std::string, vec_function> af_funs_dx8 = {
+    std::unordered_map<std::string, multi_eval_func<double>> af_funs_dx8 = {
         {"sqrt", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sqrt(x); })},
         {"sin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sin(x); })},
         {"cos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cos(x); })},
@@ -771,7 +769,7 @@ int main(int argc, char *argv[]) {
     };
 #endif
 
-    std::unordered_map<std::string, vec_function> sctl_funs_dx4 = {
+    std::unordered_map<std::string, multi_eval_func<double>> sctl_funs_dx4 = {
         {"copy", sctl_apply<double, 4>([](const sctl_dx4 &x) { return x; })},
         {"exp", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_exp<16>(x); })},
         {"sin", sctl_apply<double, 4>([](const sctl_dx4 &x) {
@@ -787,7 +785,7 @@ int main(int argc, char *argv[]) {
         {"rsqrt", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_rsqrt<16>(x); })},
     };
 
-    std::unordered_map<std::string, vec_function> sctl_funs_dx8 = {
+    std::unordered_map<std::string, multi_eval_func<double>> sctl_funs_dx8 = {
         {"copy", sctl_apply<double, 8>([](const sctl_dx8 &x) { return x; })},
         {"exp", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_exp<16>(x); })},
         {"sin", sctl_apply<double, 8>([](const sctl_dx8 &x) {
