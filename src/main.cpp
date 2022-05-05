@@ -837,36 +837,41 @@ int main(int argc, char *argv[]) {
     };
 
     std::set<std::string> fun_union;
-    for (auto kv : hank10x_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : gsl_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : gsl_complex_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : boost_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : std_funs)
-        fun_union.insert(kv.first);
     for (auto kv : amdlibm_funs)
         fun_union.insert(kv.first);
-    for (auto kv : sctl_funs_dx4)
+    for (auto kv : baobzi_funs)
         fun_union.insert(kv.first);
-    for (auto kv : af_funs_dx4)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_dx4)
+    for (auto kv : boost_funs)
         fun_union.insert(kv.first);
     for (auto kv : eigen_funs)
         fun_union.insert(kv.first);
     for (auto kv : fort_funs)
         fun_union.insert(kv.first);
+    for (auto kv : gsl_funs)
+        fun_union.insert(kv.first);
+    for (auto kv : gsl_complex_funs)
+        fun_union.insert(kv.first);
+    for (auto kv : hank10x_funs)
+        fun_union.insert(kv.first);
+    for (auto kv : sleef_funs)
+        fun_union.insert(kv.first);
+    for (auto kv : std_funs)
+        fun_union.insert(kv.first);
+
+    for (auto kv : af_funs_dx4)
+        fun_union.insert(kv.first);
+    for (auto kv : amdlibm_funs_dx4)
+        fun_union.insert(kv.first);
+    for (auto kv : sctl_funs_dx4)
+        fun_union.insert(kv.first);
+    for (auto kv : sleef_funs_dx4)
+        fun_union.insert(kv.first);
 #ifdef __AVX512F__
+    for (auto kv : af_funs_dx8)
+        fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx8)
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs_dx8)
-        fun_union.insert(kv.first);
-    for (auto kv : af_funs_dx8)
         fun_union.insert(kv.first);
 #endif
 
@@ -879,35 +884,31 @@ int main(int argc, char *argv[]) {
 
     const std::vector<std::pair<int, int>> run_sets = {{1024, 1e4}, {1024 * 1e4, 1}};
     for (auto &run_set : run_sets) {
-        const auto &[NEvals, Nrepeat] = run_set;
-        std::cerr << "Running benchmark with input vector of length " << NEvals << " and " << Nrepeat << " repeats.\n";
-        Eigen::VectorXd vals = 0.5 * (Eigen::ArrayXd::Random(NEvals) + 1.0);
-        Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(NEvals) + std::complex<double>{1.0, 1.0});
+        const auto &[n_eval, n_repeat] = run_set;
+        std::cerr << "Running benchmark with input vector of length " << n_eval << " and " << n_repeat << " repeats.\n";
+        Eigen::VectorXd vals = 0.5 * (Eigen::ArrayXd::Random(n_eval) + 1.0);
+        Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(n_eval) + std::complex<double>{1.0, 1.0});
 
         for (auto key : keys_to_eval) {
-            std::cout << test_func(key, "std", std_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "fort", fort_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, Nrepeat);
-            std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, Nrepeat);
+            std::cout << test_func(key, "std", std_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "fort", fort_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "amdlibm", amdlibm_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "boost", boost_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "gsl", gsl_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals, n_repeat);
+            std::cout << test_func(key, "sleef", sleef_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals, n_repeat);
+            std::cout << test_func(key, "baobzi", baobzi_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "eigen", eigen_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, n_repeat);
+            std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, n_repeat);
+            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, n_repeat);
+            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, n_repeat);
 #ifdef __AVX512F__
-            std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, Nrepeat);
+            std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, n_repeat);
+            std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, n_repeat);
+            std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, n_repeat);
 #endif
-            std::cout << test_func(key, "boost", boost_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "gsl", gsl_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "gsl_complex", gsl_complex_funs, params, cvals, Nrepeat);
-            std::cout << test_func(key, "sleef", sleef_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, Nrepeat);
-#ifdef __AVX512F__
-            std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, Nrepeat);
-#endif
-            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, Nrepeat);
-#ifdef __AVX512F__
-            std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, Nrepeat);
-#endif
-            std::cout << test_func(key, "eigen", eigen_funs, params, vals, Nrepeat);
-            std::cout << test_func(key, "hank10x", hank10x_funs, params, cvals, Nrepeat);
-            std::cout << test_func(key, "baobzi", baobzi_funs, params, vals, Nrepeat);
             std::cout << "\n";
         }
     }
