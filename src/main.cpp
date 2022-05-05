@@ -55,13 +55,13 @@ typedef std::function<double(double)> fun_dx1;
 typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 
-typedef std::function<void(double *, const double *, size_t)> vec_function;
+typedef std::function<void(const double *, double *, size_t)> vec_function;
 template <class Real>
-using scalar_function = std::function<void(Real *, const Real *, size_t)>;
+using scalar_function = std::function<void(const Real *, Real *, size_t)>;
 
 template <class Real, int VecLen, class F>
-std::function<void(double *, const double *, size_t)> sctl_apply(const F &f) {
-    static const auto fn = [f](Real *res, const Real *vals, size_t N) {
+std::function<void(const double *, double *, size_t)> sctl_apply(const F &f) {
+    static const auto fn = [f](const Real *vals, Real *res, size_t N) {
         using Vec = sctl::Vec<Real, VecLen>;
         for (size_t i = 0; i < N; i += VecLen) {
             Vec v = Vec::LoadAligned(vals + i);
@@ -72,8 +72,8 @@ std::function<void(double *, const double *, size_t)> sctl_apply(const F &f) {
 }
 
 template <class VEC_T, class Real, class F>
-std::function<void(double *, const double *, size_t)> vec_func_apply(const F &f) {
-    static const auto fn = [f](Real *res, const Real *vals, size_t N) {
+std::function<void(const double *, double *, size_t)> vec_func_apply(const F &f) {
+    static const auto fn = [f](const Real *vals, Real *res, size_t N) {
         for (size_t i = 0; i < N; i += VEC_T::size()) {
             VEC_T x;
             x.load_a(vals + i);
@@ -85,8 +85,8 @@ std::function<void(double *, const double *, size_t)> vec_func_apply(const F &f)
 }
 
 template <class Real, class F>
-std::function<void(Real *, const Real *, size_t)> scalar_func_apply(const F &f) {
-    static const auto fn = [f](Real *res, const Real *vals, size_t N) {
+std::function<void(const Real *, Real *, size_t)> scalar_func_apply(const F &f) {
+    static const auto fn = [f](const Real *vals, Real *res, size_t N) {
         for (size_t i = 0; i < N; i++)
             res[i] = f(vals[i]);
     };
@@ -167,19 +167,12 @@ test_func(const std::string name, const std::string library_prefix, const std::u
 
     const struct timespec st = get_wtime();
     for (long k = 0; k < Nrepeat; k++) {
-        if constexpr (std::is_same_v<FUN_T, fun_dx1> || std::is_same_v<FUN_T, fun_cdx1>) {
-            for (std::size_t i = 0; i < vals.size(); ++i)
-                resptr[i] = f(vals[i]);
-        } else if constexpr (std::is_same_v<FUN_T, baobzi::Baobzi &>) {
-            f(vals.data(), resptr, vals.size());
-        } else if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
+        if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
             for (std::size_t i = 0; i < vals.size(); ++i) {
                 std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
             }
-        } else if constexpr (std::is_same_v<FUN_T, vec_function>) {
-            f(resptr, vals.data(), vals.size());
-        } else if constexpr (std::is_same_v<FUN_T, scalar_function<cdouble>>) {
-            f((cdouble *)resptr, (cdouble *)vals.data(), vals.size() / 2);
+        } else {
+            f(vals.data(), resptr, vals.size());
         }
     }
     const struct timespec ft = get_wtime();
@@ -519,6 +512,7 @@ int main(int argc, char *argv[]) {
         {"riemann_zeta", scalar_func_apply<double>([](double x) -> double { return gsl_sf_zeta(x); })},
     };
 
+    // FIXME: check accuracy of this and this+test_func
     std::unordered_map<std::string, scalar_function<cdouble>> gsl_complex_funs = {
         {"sin",
          scalar_func_apply<cdouble>([](cdouble z) -> cdouble { return gsl_complex_wrapper(z, gsl_sf_complex_sin_e); })},
