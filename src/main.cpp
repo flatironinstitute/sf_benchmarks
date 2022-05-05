@@ -444,11 +444,6 @@ int main(int argc, char *argv[]) {
     C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
     C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
 
-    std::unordered_map<std::string, std::shared_ptr<baobzi::Baobzi>> baobzi_funs{
-        {"bessel_Y0", create_baobzi_func((void *)gsl_sf_bessel_Y0, params["bessel_Y0"].domain)},
-        {"bessel_J0", create_baobzi_func((void *)gsl_sf_bessel_J0, params["bessel_J0"].domain)},
-    };
-
     std::unordered_map<std::string, scalar_function<double>> fort_funs = {
         {"bessel_Y0", scalar_func_apply<double>([](double x) -> double {
              int n = 0;
@@ -820,8 +815,6 @@ int main(int argc, char *argv[]) {
     std::set<std::string> fun_union;
     for (auto kv : amdlibm_funs)
         fun_union.insert(kv.first);
-    for (auto kv : baobzi_funs)
-        fun_union.insert(kv.first);
     for (auto kv : boost_funs)
         fun_union.insert(kv.first);
     for (auto kv : eigen_funs)
@@ -862,6 +855,19 @@ int main(int argc, char *argv[]) {
                               std::inserter(keys_to_eval, keys_to_eval.end()));
     else
         keys_to_eval = fun_union;
+
+    std::unordered_map<std::string, std::shared_ptr<baobzi::Baobzi>> baobzi_funs;
+    std::unordered_map<std::string, void *> potential_baobzi_funs{
+        {"bessel_Y0", (void *)gsl_sf_bessel_Y0},
+        {"bessel_J0", (void *)gsl_sf_bessel_J0},
+    };
+
+    for (auto &key : keys_to_eval) {
+        if (potential_baobzi_funs.count(key)) {
+            std::cerr << "Creating baobzi function '" + key + "'.\n";
+            baobzi_funs[key] = create_baobzi_func(potential_baobzi_funs.at(key), params[key].domain);
+        }
+    }
 
     const std::vector<std::pair<int, int>> run_sets = {{1024, 1e4}, {1024 * 1e4, 1}};
     for (auto &run_set : run_sets) {
