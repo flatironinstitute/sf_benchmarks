@@ -48,24 +48,17 @@ class Params {
 };
 
 typedef std::complex<double> cdouble;
-typedef __m256d generic_dx4;
-typedef __m512d generic_dx8;
 typedef sctl::Vec<double, 4> sctl_dx4;
 typedef sctl::Vec<double, 8> sctl_dx8;
 
 typedef std::function<double(double)> fun_dx1;
 typedef std::function<cdouble(cdouble)> fun_cdx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
-typedef std::function<void(double *, const double *, size_t)> sctl_fun_dx4;
-typedef std::function<void(double *, const double *, size_t)> sctl_fun_dx8;
-typedef std::function<void(double *, const double *, size_t)> af_fun_dx4;
-typedef std::function<void(double *, const double *, size_t)> af_fun_dx8;
-typedef std::function<generic_dx4(generic_dx4)> generic_fun_dx4;
-typedef std::function<generic_dx8(generic_dx8)> generic_fun_dx8;
+typedef std::function<void(double *, const double *, size_t)> vec_function;
 
 template <class Real, int VecLen, class F>
 std::function<void(double *, const double *, size_t)> sctl_apply(const F &f) {
-    static const auto fn = [&f](Real *res, const Real *vals, size_t N) {
+    static const auto fn = [f](Real *res, const Real *vals, size_t N) {
         using Vec = sctl::Vec<Real, VecLen>;
         for (size_t i = 0; i < N; i += VecLen) {
             Vec v = Vec::LoadAligned(vals + i);
@@ -76,11 +69,11 @@ std::function<void(double *, const double *, size_t)> sctl_apply(const F &f) {
 }
 
 template <class VEC_T, class Real, class F>
-std::function<void(double *, const double *, size_t)> af_apply(const F &f) {
-    static const auto fn = [&f](Real *res, const Real *vals, size_t N) {
+std::function<void(double *, const double *, size_t)> vec_func_apply(const F &f) {
+    static const auto fn = [f](Real *res, const Real *vals, size_t N) {
         for (size_t i = 0; i < N; i += VEC_T::size()) {
             VEC_T x;
-            x.load(vals + i);
+            x.load_a(vals + i);
             f(x).store_a(res + i);
         }
     };
@@ -170,20 +163,8 @@ test_func(const std::string name, const std::string library_prefix, const std::u
             for (std::size_t i = 0; i < vals.size(); ++i) {
                 std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
             }
-        } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx4>) {
+        } else if constexpr (std::is_same_v<FUN_T, vec_function>) {
             f(resptr, vals.data(), vals.size());
-        } else if constexpr (std::is_same_v<FUN_T, sctl_fun_dx8>) {
-            f(resptr, vals.data(), vals.size());
-        } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx4>) {
-            for (std::size_t i = 0; i < vals.size(); i += 4) {
-                sctl_dx4 x = sctl_dx4::LoadAligned(vals.data() + i);
-                _mm256_store_pd(resptr + i, f(x.get().v));
-            }
-        } else if constexpr (std::is_same_v<FUN_T, generic_fun_dx8>) {
-            for (std::size_t i = 0; i < vals.size(); i += 8) {
-                sctl_dx8 x = sctl_dx8::LoadAligned(vals.data() + i);
-                _mm512_store_pd(resptr + i, f(x.get().v));
-            }
         }
     const struct timespec ft = get_wtime();
 
@@ -416,7 +397,7 @@ int main(int argc, char *argv[]) {
         {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}},
     };
 
-    void *handle = dlopen("libalm.so", RTLD_LAZY);
+    void *handle = dlopen("libalm.so", RTLD_NOW);
 
     using C_FUN1D = double (*)(double);
     using C_FUN2D = double (*)(double, double);
@@ -441,8 +422,8 @@ int main(int argc, char *argv[]) {
     C_FUN1D amd_sqrt = (C_FUN1D)dlsym(handle, "amd_sqrt");
     C_FUN2D amd_pow = (C_FUN2D)dlsym(handle, "amd_pow");
 
-    using C_DX4_FUN1D = generic_dx4 (*)(generic_dx4);
-    using C_DX4_FUN2D = generic_dx4 (*)(generic_dx4, generic_dx4);
+    using C_DX4_FUN1D = Vec4d (*)(Vec4d);
+    using C_DX4_FUN2D = Vec4d (*)(Vec4d, Vec4d);
     C_DX4_FUN1D amd_vrd4_sin = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_sin");
     C_DX4_FUN1D amd_vrd4_cos = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_cos");
     C_DX4_FUN1D amd_vrd4_tan = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_tan");
@@ -652,22 +633,19 @@ int main(int argc, char *argv[]) {
         {"pow13", [&amd_pow](double x) -> double { return amd_pow(x, 13); }},
     };
 
-    std::unordered_map<std::string, generic_fun_dx4> amdlibm_funs_dx4 = {
-        {"sin", amd_vrd4_sin},
-        {"cos", amd_vrd4_cos},
-        {"tan", amd_vrd4_tan},
-        {"log", amd_vrd4_log},
-        {"log2", amd_vrd4_log2},
-        {"exp", amd_vrd4_exp},
-        {"exp2", amd_vrd4_exp2},
+    Vec4d x;
+    std::unordered_map<std::string, vec_function> amdlibm_funs_dx4 = {
+        {"sin", vec_func_apply<Vec4d, double>([&amd_vrd4_sin](Vec4d x) -> Vec4d { return amd_vrd4_sin(x); })},
+        {"cos", vec_func_apply<Vec4d, double>([&amd_vrd4_cos](Vec4d x) -> Vec4d { return amd_vrd4_cos(x); })},
+        {"tan", vec_func_apply<Vec4d, double>([&amd_vrd4_tan](Vec4d x) -> Vec4d { return amd_vrd4_tan(x); })},
+        {"log", vec_func_apply<Vec4d, double>([&amd_vrd4_log](Vec4d x) -> Vec4d { return amd_vrd4_log(x); })},
+        {"log2", vec_func_apply<Vec4d, double>([&amd_vrd4_log2](Vec4d x) -> Vec4d { return amd_vrd4_log2(x); })},
+        {"exp", vec_func_apply<Vec4d, double>([&amd_vrd4_exp](Vec4d x) -> Vec4d { return amd_vrd4_exp(x); })},
+        {"exp2", vec_func_apply<Vec4d, double>([&amd_vrd4_exp2](Vec4d x) -> Vec4d { return amd_vrd4_exp2(x); })},
         {"pow3.5",
-         [&amd_vrd4_pow](generic_dx4 x) -> generic_dx4 {
-             return amd_vrd4_pow(x, generic_dx4{3.5, 3.5, 3.5, 3.5});
-         }},
+         vec_func_apply<Vec4d, double>([&amd_vrd4_pow](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{3.5}); })},
         {"pow13",
-         [&amd_vrd4_pow](generic_dx4 x) -> generic_dx4 {
-             return amd_vrd4_pow(x, generic_dx4{13, 13, 13, 13});
-         }},
+         vec_func_apply<Vec4d, double>([&amd_vrd4_pow](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{13}); })},
     };
 
     std::unordered_map<std::string, fun_dx1> sleef_funs = {
@@ -700,131 +678,124 @@ int main(int argc, char *argv[]) {
         {"pow13", [](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); }},
     };
 
-    std::unordered_map<std::string, generic_fun_dx4> sleef_funs_dx4 = {
-        {"sin_pi", Sleef_sinpid4_u05avx2},
-        {"cos_pi", Sleef_cospid4_u05avx2},
-        {"sin", Sleef_sind4_u10avx2},
-        {"cos", Sleef_cosd4_u10avx2},
-        {"tan", Sleef_tand4_u10avx2},
-        {"sinh", Sleef_sinhd4_u10avx2},
-        {"cosh", Sleef_coshd4_u10avx2},
-        {"tanh", Sleef_tanhd4_u10avx2},
-        {"asin", Sleef_asind4_u10avx2},
-        {"acos", Sleef_acosd4_u10avx2},
-        {"atan", Sleef_atand4_u10avx2},
-        {"asinh", Sleef_asinhd4_u10avx2},
-        {"acosh", Sleef_acoshd4_u10avx2},
-        {"atanh", Sleef_atanhd4_u10avx2},
-        {"log", Sleef_logd4_u10avx2},
-        {"log", Sleef_log2d4_u10avx2},
-        {"log10", Sleef_log10d4_u10avx2},
-        {"exp", Sleef_expd4_u10avx2},
-        {"exp2", Sleef_exp2d4_u10avx2},
-        {"exp10", Sleef_exp10d4_u10avx2},
-        {"erf", Sleef_erfd4_u10avx2},
-        {"erfc", Sleef_erfcd4_u15avx2},
-        {"lgamma", Sleef_lgammad4_u10avx2},
-        {"tgamma", Sleef_tgammad4_u10avx2},
-        {"sqrt", Sleef_sqrtd4_u05avx2},
-        {"pow3.5",
-         [](generic_dx4 x) -> generic_dx4 {
-             return Sleef_powd4_u10avx2(x, generic_dx4{3.5, 3.5, 3.5, 3.5});
-         }},
-        {"pow13",
-         [](generic_dx4 x) -> generic_dx4 {
-             return Sleef_powd4_u10avx2(x, generic_dx4{13, 13, 13, 13});
-         }},
+    std::unordered_map<std::string, vec_function> sleef_funs_dx4 = {
+        {"sin_pi", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sinpid4_u05avx2(x); })},
+        {"cos_pi", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_cospid4_u05avx2(x); })},
+        {"sin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sind4_u10avx2(x); })},
+        {"cos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_cosd4_u10avx2(x); })},
+        {"tan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_tand4_u10avx2(x); })},
+        {"sinh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sinhd4_u10avx2(x); })},
+        {"cosh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_coshd4_u10avx2(x); })},
+        {"tanh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_tanhd4_u10avx2(x); })},
+        {"asin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_asind4_u10avx2(x); })},
+        {"acos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_acosd4_u10avx2(x); })},
+        {"atan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_atand4_u10avx2(x); })},
+        {"asinh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_asinhd4_u10avx2(x); })},
+        {"acosh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_acoshd4_u10avx2(x); })},
+        {"atanh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_atanhd4_u10avx2(x); })},
+        {"log", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_logd4_u10avx2(x); })},
+        {"log2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_log2d4_u10avx2(x); })},
+        {"log10", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_log10d4_u10avx2(x); })},
+        {"exp", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_expd4_u10avx2(x); })},
+        {"exp2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_exp2d4_u10avx2(x); })},
+        {"exp10", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_exp10d4_u10avx2(x); })},
+        {"erf", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_erfd4_u10avx2(x); })},
+        {"erfc", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_erfcd4_u15avx2(x); })},
+        {"lgamma", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_lgammad4_u10avx2(x); })},
+        {"tlgamma", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_tgammad4_u10avx2(x); })},
+        {"sqrt", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sqrtd4_u05avx2(x); })},
+        {"pow3.5", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d {
+             return Sleef_powd4_u10avx2(x, Vec4d{3.5, 3.5, 3.5, 3.5});
+         })},
+        {"pow13", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d {
+             return Sleef_powd4_u10avx2(x, Vec4d{13, 13, 13, 13});
+         })},
     };
 
 #ifdef __AVX512F__
-    std::unordered_map<std::string, generic_fun_dx8> sleef_funs_dx8 = {
-        {"sin_pi", Sleef_sinpid8_u05avx512f},
-        {"cos_pi", Sleef_cospid8_u05avx512f},
-        {"sin", Sleef_sind8_u10avx512f},
-        {"cos", Sleef_cosd8_u10avx512f},
-        {"tan", Sleef_tand8_u10avx512f},
-        {"sinh", Sleef_sinhd8_u10avx512f},
-        {"cosh", Sleef_coshd8_u10avx512f},
-        {"tanh", Sleef_tanhd8_u10avx512f},
-        {"asin", Sleef_asind8_u10avx512f},
-        {"acos", Sleef_acosd8_u10avx512f},
-        {"atan", Sleef_atand8_u10avx512f},
-        {"asinh", Sleef_asinhd8_u10avx512f},
-        {"acosh", Sleef_acoshd8_u10avx512f},
-        {"atanh", Sleef_atanhd8_u10avx512f},
-        {"log", Sleef_logd8_u10avx512f},
-        {"log", Sleef_log2d8_u10avx512f},
-        {"log10", Sleef_log10d8_u10avx512f},
-        {"exp", Sleef_expd8_u10avx512f},
-        {"exp2", Sleef_exp2d8_u10avx512f},
-        {"exp10", Sleef_exp10d8_u10avx512f},
-        {"erf", Sleef_erfd8_u10avx512f},
-        {"erfc", Sleef_erfcd8_u15avx512f},
-        {"lgamma", Sleef_lgammad8_u10avx512f},
-        {"tgamma", Sleef_tgammad8_u10avx512f},
-        {"sqrt", Sleef_sqrtd8_u05avx512f},
+    std::unordered_map<std::string, vec_function> sleef_funs_dx8 = {
+        {"sin_pi", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sinpid8_u05avx512f(x); })},
+        {"cos_pi", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_cospid8_u05avx512f(x); })},
+        {"sin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sind8_u10avx512f(x); })},
+        {"cos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_cosd8_u10avx512f(x); })},
+        {"tan", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_tand8_u10avx512f(x); })},
+        {"sinh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sinhd8_u10avx512f(x); })},
+        {"cosh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_coshd8_u10avx512f(x); })},
+        {"tanh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_tanhd8_u10avx512f(x); })},
+        {"asin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_asind8_u10avx512f(x); })},
+        {"acos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_acosd8_u10avx512f(x); })},
+        {"atan", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_atand8_u10avx512f(x); })},
+        {"asinh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_asinhd8_u10avx512f(x); })},
+        {"acosh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_acoshd8_u10avx512f(x); })},
+        {"atanh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_atanhd8_u10avx512f(x); })},
+        {"log", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_logd8_u10avx512f(x); })},
+        {"log2", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_log2d8_u10avx512f(x); })},
+        {"log10", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_log10d8_u10avx512f(x); })},
+        {"exp", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_expd8_u10avx512f(x); })},
+        {"exp2", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_exp2d8_u10avx512f(x); })},
+        {"exp10", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_exp10d8_u10avx512f(x); })},
+        {"erf", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_erfd8_u10avx512f(x); })},
+        {"erfc", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_erfcd8_u15avx512f(x); })},
+        {"lgamma", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_lgammad8_u10avx512f(x); })},
+        {"tlgamma", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_tgammad8_u10avx512f(x); })},
+        {"sqrt", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sqrtd8_u05avx512f(x); })},
         {"pow3.5",
-         [](generic_dx8 x) -> generic_dx8 {
-             return Sleef_powd8_u10avx512f(x, generic_dx8{3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5});
-         }},
-        {"pow13",
-         [](generic_dx8 x) -> generic_dx8 {
-             return Sleef_powd8_u10avx512f(x, generic_dx8{13, 13, 13, 13, 13, 13, 13, 13});
-         }},
+         vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_powd8_u10avx512f(x, Vec8d{3.5}); })},
+        {"pow13", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_powd8_u10avx512f(x, Vec8d{13}); })},
     };
 #endif
 
-    std::unordered_map<std::string, af_fun_dx4> af_funs_dx4 = {
-        {"sqrt", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sqrt(x); })},
-        {"sin", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sin(x); })},
-        {"cos", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cos(x); })},
-        {"tan", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return tan(x); })},
-        {"sinh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sinh(x); })},
-        {"cosh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cosh(x); })},
-        {"tanh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return tanh(x); })},
-        {"asinh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return asinh(x); })},
-        {"acosh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return acosh(x); })},
-        {"atanh", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return atanh(x); })},
-        {"asin", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return asin(x); })},
-        {"acos", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return acos(x); })},
-        {"atan", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return atan(x); })},
-        {"exp", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp(x); })},
-        {"exp2", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp2(x); })},
-        {"exp10", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp10(x); })},
-        {"log", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log(x); })},
-        {"log2", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log2(x); })},
-        {"log10", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log10(x); })},
-        {"pow3.5", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return pow(x, 3.5); })},
-        {"pow13", af_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return pow_const(x, 13); })},
+    std::unordered_map<std::string, vec_function> af_funs_dx4 = {
+        {"sqrt", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sqrt(x); })},
+        {"sin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sin(x); })},
+        {"cos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cos(x); })},
+        {"tan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return tan(x); })},
+        {"sinh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return sinh(x); })},
+        {"cosh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return cosh(x); })},
+        {"tanh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return tanh(x); })},
+        {"asinh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return asinh(x); })},
+        {"acosh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return acosh(x); })},
+        {"atanh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return atanh(x); })},
+        {"asin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return asin(x); })},
+        {"acos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return acos(x); })},
+        {"atan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return atan(x); })},
+        {"exp", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp(x); })},
+        {"exp2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp2(x); })},
+        {"exp10", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return exp10(x); })},
+        {"log", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log(x); })},
+        {"log2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log2(x); })},
+        {"log10", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return log10(x); })},
+        {"pow3.5", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return pow(x, 3.5); })},
+        {"pow13", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return pow_const(x, 13); })},
     };
 
 #ifdef __AVX512F__
-    std::unordered_map<std::string, af_fun_dx8> af_funs_dx8 = {
-        {"sqrt", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sqrt(x); })},
-        {"sin", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sin(x); })},
-        {"cos", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cos(x); })},
-        {"tan", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return tan(x); })},
-        {"sinh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sinh(x); })},
-        {"cosh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cosh(x); })},
-        {"tanh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return tanh(x); })},
-        {"asinh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return asinh(x); })},
-        {"acosh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return acosh(x); })},
-        {"atanh", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return atanh(x); })},
-        {"asin", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return asin(x); })},
-        {"acos", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return acos(x); })},
-        {"atan", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return atan(x); })},
-        {"exp", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp(x); })},
-        {"exp2", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp2(x); })},
-        {"exp10", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp10(x); })},
-        {"log", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log(x); })},
-        {"log2", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log2(x); })},
-        {"log10", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log10(x); })},
-        {"pow3.5", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return pow(x, 3.5); })},
-        {"pow13", af_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return pow_const(x, 13); })},
+    std::unordered_map<std::string, vec_function> af_funs_dx8 = {
+        {"sqrt", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sqrt(x); })},
+        {"sin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sin(x); })},
+        {"cos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cos(x); })},
+        {"tan", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return tan(x); })},
+        {"sinh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sinh(x); })},
+        {"cosh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cosh(x); })},
+        {"tanh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return tanh(x); })},
+        {"asinh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return asinh(x); })},
+        {"acosh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return acosh(x); })},
+        {"atanh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return atanh(x); })},
+        {"asin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return asin(x); })},
+        {"acos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return acos(x); })},
+        {"atan", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return atan(x); })},
+        {"exp", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp(x); })},
+        {"exp2", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp2(x); })},
+        {"exp10", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return exp10(x); })},
+        {"log", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log(x); })},
+        {"log2", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log2(x); })},
+        {"log10", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return log10(x); })},
+        {"pow3.5", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return pow(x, 3.5); })},
+        {"pow13", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return pow_const(x, 13); })},
     };
 #endif
 
-    std::unordered_map<std::string, sctl_fun_dx4> sctl_funs_dx4 = {
+    std::unordered_map<std::string, vec_function> sctl_funs_dx4 = {
         {"copy", sctl_apply<double, 4>([](const sctl_dx4 &x) { return x; })},
         {"exp", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_exp<16>(x); })},
         {"sin", sctl_apply<double, 4>([](const sctl_dx4 &x) {
@@ -840,7 +811,7 @@ int main(int argc, char *argv[]) {
         {"rsqrt", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_rsqrt<16>(x); })},
     };
 
-    std::unordered_map<std::string, sctl_fun_dx8> sctl_funs_dx8 = {
+    std::unordered_map<std::string, vec_function> sctl_funs_dx8 = {
         {"copy", sctl_apply<double, 8>([](const sctl_dx8 &x) { return x; })},
         {"exp", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_exp<16>(x); })},
         {"sin", sctl_apply<double, 8>([](const sctl_dx8 &x) {
