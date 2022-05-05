@@ -378,8 +378,8 @@ std::string get_eigen_version() {
 std::string get_cpu_name() { return exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3"); }
 
 double baobzi_fun_wrapper(const double *x, const void *data) {
-    double (*myfun)(double) = (double (*)(double))data;
-    return myfun(*x);
+    auto *myfun = (std::function<double(double)> *)data;
+    return (*myfun)(*x);
 }
 
 std::shared_ptr<baobzi::Baobzi> create_baobzi_func(void *infun, const std::pair<double, double> &domain) {
@@ -405,7 +405,7 @@ int main(int argc, char *argv[]) {
         {"acos", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}},  {"erf", {.domain{-1.0, 1.0}}},
         {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},     {"log", {.domain{0.0, 10.0}}},
         {"asinh", {.domain{-100.0, 100.0}}}, {"acosh", {.domain{1.0, 1000.0}}},   {"atanh", {.domain{-1.0, 1.0}}},
-        {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}},
+        {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}}, {"bessel_Y2", {.domain{0.1, 30.0}}},
     };
 
     void *handle = dlopen("libalm.so", RTLD_NOW);
@@ -857,15 +857,26 @@ int main(int argc, char *argv[]) {
         keys_to_eval = fun_union;
 
     std::unordered_map<std::string, std::shared_ptr<baobzi::Baobzi>> baobzi_funs;
-    std::unordered_map<std::string, void *> potential_baobzi_funs{
-        {"bessel_Y0", (void *)gsl_sf_bessel_Y0},
-        {"bessel_J0", (void *)gsl_sf_bessel_J0},
+    std::unordered_map<std::string, std::function<double(double)>> potential_baobzi_funs{
+        {"bessel_Y0", [](double x) -> double { return gsl_sf_bessel_Y0(x); }},
+        {"bessel_Y1", [](double x) -> double { return gsl_sf_bessel_Y1(x); }},
+        {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
+        {"bessel_I0", [](double x) -> double { return gsl_sf_bessel_I0(x); }},
+        {"bessel_I1", [](double x) -> double { return gsl_sf_bessel_I1(x); }},
+        {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
+        {"bessel_J0", [](double x) -> double { return gsl_sf_bessel_J0(x); }},
+        {"bessel_J1", [](double x) -> double { return gsl_sf_bessel_J1(x); }},
+        {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
+        {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
+        {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
+        {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
+        {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
     };
 
     for (auto &key : keys_to_eval) {
         if (potential_baobzi_funs.count(key)) {
             std::cerr << "Creating baobzi function '" + key + "'.\n";
-            baobzi_funs[key] = create_baobzi_func(potential_baobzi_funs.at(key), params[key].domain);
+            baobzi_funs[key] = create_baobzi_func((void *)(&potential_baobzi_funs.at(key)), params[key].domain);
         }
     }
 
