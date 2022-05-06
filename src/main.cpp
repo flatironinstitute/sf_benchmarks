@@ -54,7 +54,6 @@ typedef sctl::Vec<double, 8> sctl_dx8;
 typedef sctl::Vec<float, 8> sctl_fx8;
 typedef sctl::Vec<float, 16> sctl_fx16;
 
-typedef std::function<double(double)> fun_dx1;
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 
 template <class Real>
