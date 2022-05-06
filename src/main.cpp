@@ -56,13 +56,13 @@ typedef sctl::Vec<float, 16> sctl_fx16;
 
 typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 
-template <class Real>
-using multi_eval_func = std::function<void(const Real *, Real *, size_t)>;
+template <class VAL_T>
+using multi_eval_func = std::function<void(const VAL_T *, VAL_T *, size_t)>;
 
-template <class Real, int VecLen, class F>
-std::function<void(const Real *, Real *, size_t)> sctl_apply(const F &f) {
-    static const auto fn = [f](const Real *vals, Real *res, size_t N) {
-        using Vec = sctl::Vec<Real, VecLen>;
+template <class VAL_T, int VecLen, class F>
+std::function<void(const VAL_T *, VAL_T *, size_t)> sctl_apply(const F &f) {
+    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
+        using Vec = sctl::Vec<VAL_T, VecLen>;
         for (size_t i = 0; i < N; i += VecLen) {
             Vec v = Vec::LoadAligned(vals + i);
             f(v).StoreAligned(res + i);
@@ -71,9 +71,9 @@ std::function<void(const Real *, Real *, size_t)> sctl_apply(const F &f) {
     return fn;
 }
 
-template <class VEC_T, class Real, class F>
-std::function<void(const Real *, Real *, size_t)> vec_func_apply(const F &f) {
-    static const auto fn = [f](const Real *vals, Real *res, size_t N) {
+template <class VEC_T, class VAL_T, class F>
+std::function<void(const VAL_T *, VAL_T *, size_t)> vec_func_apply(const F &f) {
+    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
         for (size_t i = 0; i < N; i += VEC_T::size()) {
             VEC_T x;
             x.load_a(vals + i);
@@ -84,9 +84,9 @@ std::function<void(const Real *, Real *, size_t)> vec_func_apply(const F &f) {
     return fn;
 }
 
-template <class Real, class F>
-std::function<void(const Real *, Real *, size_t)> scalar_func_apply(const F &f) {
-    static const auto fn = [f](const Real *vals, Real *res, size_t N) {
+template <class VAL_T, class F>
+std::function<void(const VAL_T *, VAL_T *, size_t)> scalar_func_apply(const F &f) {
+    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
         for (size_t i = 0; i < N; i++)
             res[i] = f(vals[i]);
     };
@@ -187,126 +187,90 @@ test_func(const std::string name, const std::string library_prefix, const std::u
 // https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
 namespace OPS {
 enum OPS {
-    COS,
-    SIN,
-    TAN,
-    COSH,
-    SINH,
-    TANH,
-    EXP,
-    LOG,
-    LOG10,
-    POW35,
-    POW13,
-    ASIN,
-    ACOS,
-    ATAN,
-    ASINH,
-    ACOSH,
-    ATANH,
-    ERF,
-    ERFC,
-    LGAMMA,
-    DIGAMMA,
-    NDTRI,
-    SQRT,
-    RSQRT
+    cos,
+    sin,
+    tan,
+    cosh,
+    sinh,
+    tanh,
+    exp,
+    log,
+    log10,
+    pow35,
+    pow13,
+    asin,
+    acos,
+    atan,
+    asinh,
+    acosh,
+    atanh,
+    erf,
+    erfc,
+    lgamma,
+    digamma,
+    ndtri,
+    sqrt,
+    rsqrt
 };
 }
 
-template <typename Real>
-BenchResult<Real> test_func(const std::string name, const std::string library_prefix,
-                            const std::unordered_map<std::string, OPS::OPS> funs,
-                            std::unordered_map<std::string, Params> params, const Eigen::VectorX<Real> &vals_in,
-                            size_t Nrepeat) {
+#define EIGEN_CASE(OP)                                                                                                 \
+    case OPS::OP: {                                                                                                    \
+        res_eigen = x.array().OP();                                                                                    \
+        break;                                                                                                         \
+    }
+
+template <typename VAL_T>
+BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
+                             const std::unordered_map<std::string, OPS::OPS> funs,
+                             std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in,
+                             size_t Nrepeat) {
     const std::string label = library_prefix + "_" + name;
     if (!funs.count(name))
-        return BenchResult<Real>(label);
+        return BenchResult<VAL_T>(label);
 
     const Params &par = params[name];
-    Eigen::VectorX<Real> x = transform_domain(vals_in, par.domain.first, par.domain.second);
+    Eigen::VectorX<VAL_T> x = transform_domain(vals_in, par.domain.first, par.domain.second);
 
-    BenchResult<Real> res(label, x.size(), x.size() * Nrepeat, par);
+    BenchResult<VAL_T> res(label, x.size(), x.size() * Nrepeat, par);
 
-    Eigen::VectorX<Real> &res_eigen = res.res;
+    Eigen::VectorX<VAL_T> &res_eigen = res.res;
 
     OPS::OPS OP = funs.at(name);
     const struct timespec st = get_wtime();
 
     for (long k = 0; k < Nrepeat; k++)
         switch (OP) {
-        case OPS::COS:
-            res_eigen = x.array().cos();
-            break;
-        case OPS::SIN:
-            res_eigen = x.array().sin();
-            break;
-        case OPS::TAN:
-            res_eigen = x.array().tan();
-            break;
-        case OPS::COSH:
-            res_eigen = x.array().cosh();
-            break;
-        case OPS::SINH:
-            res_eigen = x.array().sinh();
-            break;
-        case OPS::TANH:
-            res_eigen = x.array().tanh();
-            break;
-        case OPS::EXP:
-            res_eigen = x.array().exp();
-            break;
-        case OPS::LOG:
-            res_eigen = x.array().log();
-            break;
-        case OPS::LOG10:
-            res_eigen = x.array().log10();
-            break;
-        case OPS::POW35:
+            EIGEN_CASE(cos)
+            EIGEN_CASE(sin)
+            EIGEN_CASE(tan)
+            EIGEN_CASE(cosh)
+            EIGEN_CASE(sinh)
+            EIGEN_CASE(tanh)
+            EIGEN_CASE(exp)
+            EIGEN_CASE(log)
+            EIGEN_CASE(log10)
+            EIGEN_CASE(asin)
+            EIGEN_CASE(acos)
+            EIGEN_CASE(atan)
+            EIGEN_CASE(asinh)
+            EIGEN_CASE(acosh)
+            EIGEN_CASE(atanh)
+            EIGEN_CASE(erf)
+            EIGEN_CASE(erfc)
+            EIGEN_CASE(lgamma)
+            EIGEN_CASE(digamma)
+            EIGEN_CASE(ndtri)
+            EIGEN_CASE(sqrt)
+            EIGEN_CASE(rsqrt)
+        case OPS::pow35: {
             res_eigen = x.array().pow(3.5);
             break;
-        case OPS::POW13:
+        }
+        case OPS::pow13: {
             res_eigen = x.array().pow(13);
             break;
-        case OPS::ASIN:
-            res_eigen = x.array().asin();
-            break;
-        case OPS::ACOS:
-            res_eigen = x.array().acos();
-            break;
-        case OPS::ATAN:
-            res_eigen = x.array().atan();
-            break;
-        case OPS::ASINH:
-            res_eigen = x.array().asinh();
-            break;
-        case OPS::ACOSH:
-            res_eigen = x.array().acosh();
-            break;
-        case OPS::ATANH:
-            res_eigen = x.array().atanh();
-            break;
-        case OPS::ERF:
-            res_eigen = x.array().erf();
-            break;
-        case OPS::ERFC:
-            res_eigen = x.array().erfc();
-            break;
-        case OPS::LGAMMA:
-            res_eigen = x.array().lgamma();
-            break;
-        case OPS::DIGAMMA:
-            res_eigen = x.array().digamma();
-            break;
-        case OPS::NDTRI:
-            res_eigen = x.array().ndtri();
-            break;
-        case OPS::SQRT:
-            res_eigen = x.array().sqrt();
-            break;
-        case OPS::RSQRT:
-            res_eigen = x.array().rsqrt();
-            break;
+        }
         }
 
     const struct timespec ft = get_wtime();
@@ -1116,12 +1080,12 @@ int main(int argc, char *argv[]) {
     };
 
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
-        {"sin", OPS::SIN},         {"cos", OPS::COS},      {"tan", OPS::TAN},     {"sinh", OPS::SINH},
-        {"cosh", OPS::COSH},       {"tanh", OPS::TANH},    {"exp", OPS::EXP},     {"log", OPS::LOG},
-        {"log10", OPS::LOG10},     {"pow3.5", OPS::POW35}, {"pow13", OPS::POW13}, {"asin", OPS::ASIN},
-        {"acos", OPS::ACOS},       {"atan", OPS::ATAN},    {"asinh", OPS::ASINH}, {"atanh", OPS::ATANH},
-        {"acosh", OPS::ACOSH},     {"erf", OPS::ERF},      {"erfc", OPS::ERFC},   {"lgamma", OPS::LGAMMA},
-        {"digamma", OPS::DIGAMMA}, {"ndtri", OPS::NDTRI},  {"sqrt", OPS::SQRT},   {"rsqrt", OPS::RSQRT},
+        {"sin", OPS::sin},         {"cos", OPS::cos},      {"tan", OPS::tan},     {"sinh", OPS::sinh},
+        {"cosh", OPS::cosh},       {"tanh", OPS::tanh},    {"exp", OPS::exp},     {"log", OPS::log},
+        {"log10", OPS::log10},     {"pow3.5", OPS::pow35}, {"pow13", OPS::pow13}, {"asin", OPS::asin},
+        {"acos", OPS::acos},       {"atan", OPS::atan},    {"asinh", OPS::asinh}, {"atanh", OPS::atanh},
+        {"acosh", OPS::acosh},     {"erf", OPS::erf},      {"erfc", OPS::erfc},   {"lgamma", OPS::lgamma},
+        {"digamma", OPS::digamma}, {"ndtri", OPS::ndtri},  {"sqrt", OPS::sqrt},   {"rsqrt", OPS::rsqrt},
     };
 
     std::set<std::string> fun_union;
