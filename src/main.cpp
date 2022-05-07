@@ -419,16 +419,6 @@ std::shared_ptr<baobzi::Baobzi> create_baobzi_func(void *infun, const std::pair<
     return std::shared_ptr<baobzi::Baobzi>(new baobzi::Baobzi(&input, &center, &hl));
 }
 
-#define ERRCHECK                                                                                                       \
-    {                                                                                                                  \
-        if (err != NULL) {                                                                                             \
-            printf("%s\n", err);                                                                                       \
-            sqlite3_free(err);                                                                                         \
-            return 1;                                                                                                  \
-        } else                                                                                                         \
-            return 0;                                                                                                  \
-    }
-
 class Database {
   public:
     Database() = default;
