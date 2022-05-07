@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(GSL REQUIRED)
 find_package(Boost)
+find_package(SQLite3)
 
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
 
@@ -47,6 +48,6 @@ link_directories(${CMAKE_BINARY_DIR}/contrib/lib64 ${PROJECT_SOURCE_DIR}/extern/
 file(GLOB SF_SOURCES "src/main.cpp" "src/hank103.f" "src/bessel.f" "src/hank106.f")
 add_executable(sf_benchmarks ${SF_SOURCES})
 target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES} ${GSL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-target_link_libraries(sf_benchmarks sleef gsl baobzi dl)
+target_link_libraries(sf_benchmarks sleef gsl baobzi dl SQLite::SQLite3)
 add_dependencies(sf_benchmarks libsleef libbaobzi)
 target_compile_options(sf_benchmarks PRIVATE -march=native)

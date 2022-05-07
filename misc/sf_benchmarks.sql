@@ -1,6 +1,6 @@
 create table hosts (
   id integer primary key autoincrement,
-  name text not null unique,
+  cpuname text not null unique,
   cpuclock text null,
   cpuclockmax text null,
   memclock text null,
@@ -13,20 +13,20 @@ create table hosts (
 create table libraries (
   id integer primary key autoincrement,
   name text,
-  version text
+  version text,
+  unique(name, version)
 );
 
-create table toolchain (
+create table toolchains (
   id integer primary key autoincrement,
-  unamea text
-  compiler text
-  compilervers text
-  libc text
+  compiler text,
+  compilervers text,
+  libcvers text,
+  unique(compiler, compilervers, libcvers)
 );
 
 create table configurations (
   id integer primary key autoincrement,
-  library integer not null references libraries,
   funct text not null,
   ftype text not null,
   nelem integer not null,
@@ -35,19 +35,22 @@ create table configurations (
   lbound real not null,
   ubound real not null,
   ilbound real null,
-  iubound real null
+  iubound real null,
+  unique(funct, ftype, nelem, nrep, vectlev, lbound, ubound, ilbound, iubound)
 );
 
 create table runs (
   id integer primary key autoincrement,
   time timestamp not null default current_timestamp,
-  host integer not null references hosts
+  host integer not null references hosts,
+  toolchain integer not null references toolchains
 );
 
 create table measurements (
   id integer primary key autoincrement,
   run integer references runs,
-  test integer not null references tests,
+  library integer not null references libraries,
+  configuration integer not null references configurations,
   evalspersec real not null,
   meanevaltime real not null,
   stddev real,

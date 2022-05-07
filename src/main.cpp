@@ -4,12 +4,14 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <functional>
 #include <iomanip>
 #include <ios>
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <toml.hpp>
 #include <tuple>
@@ -417,7 +419,80 @@ std::shared_ptr<baobzi::Baobzi> create_baobzi_func(void *infun, const std::pair<
     return std::shared_ptr<baobzi::Baobzi>(new baobzi::Baobzi(&input, &center, &hl));
 }
 
+#define ERRCHECK                                                                                                       \
+    {                                                                                                                  \
+        if (err != NULL) {                                                                                             \
+            printf("%s\n", err);                                                                                       \
+            sqlite3_free(err);                                                                                         \
+            return 1;                                                                                                  \
+        } else                                                                                                         \
+            return 0;                                                                                                  \
+    }
+
+class Database {
+  public:
+    Database() = default;
+
+    Database(std::string db_file) {
+        if (std::filesystem::exists(db_file)) {
+            sqlite3_open(db_file.c_str(), &db_);
+            update_host_info();
+            update_library_info();
+            update_toolchain_info();
+        } else
+            throw std::runtime_error("DB file '" + db_file + "' does not exist.\n");
+    }
+
+    ~Database() { sqlite3_close(db_); }
+
+    static std::string quote(const std::string &str) { return "\"" + str + "\""; }
+    static int errcheck(char *err) {
+        if (err != NULL) {
+            printf("%s\n", err);
+            sqlite3_free(err);
+            return 1;
+        }
+        return 0;
+    }
+
+    bool update_host_info() {
+        char *err = NULL;
+        std::string sql = "INSERT OR IGNORE INTO hosts (cpuname,l1dcache,l1icache,l2cache,l3cache) VALUES(" +
+                          quote(host_info.cpu_name) + "," + quote(host_info.L1d) + "," + quote(host_info.L1i) + "," +
+                          quote(host_info.L2) + "," + quote(host_info.L3) + ");";
+        sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
+        return errcheck(err);
+    }
+
+    bool update_library_info() {
+        bool iserr = false;
+        for (auto &library_info : libraries_info) {
+            char *err = NULL;
+            std::string sql = "INSERT OR IGNORE INTO libraries (name,version) VALUES(" + quote(library_info.name) +
+                              "," + quote(library_info.version) + ");";
+            sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
+            if (errcheck(err))
+                iserr = true;
+        }
+        return iserr;
+    }
+
+    bool update_toolchain_info() {
+        char *err = NULL;
+        std::string sql = "INSERT OR IGNORE INTO toolchains (compiler,compilervers,libcvers) VALUES(" +
+                          quote(toolchain_info.compiler) + "," + quote(toolchain_info.compilervers) + "," +
+                          quote(toolchain_info.libcvers) + ");";
+        sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
+        return errcheck(err);
+    }
+
+  private:
+    sqlite3 *db_ = nullptr;
+};
+
 int main(int argc, char *argv[]) {
+    Database db("../sf_benchmarks.sqlite");
+
     std::cout << host_info.cpu_name << std::endl;
     std::cout << "    " + toolchain_info.compiler + ": " + toolchain_info.compilervers << std::endl;
     std::cout << "    libc: " + toolchain_info.libcvers << std::endl;
