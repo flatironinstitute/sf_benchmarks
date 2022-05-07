@@ -28,9 +28,114 @@
 #include <vectormath_hyp.h>
 #include <vectormath_trig.h>
 
+#include <boost/version.hpp>
+#include <gsl/gsl_version.h>
+
+#include <sqlite3.h>
+
 #include <dlfcn.h>
 #include <gnu/libc-version.h>
 #include <time.h>
+
+std::string exec(const char *cmd) {
+    // https://stackoverflow.com/a/478960
+    std::array<char, 128> buffer;
+    std::string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    result.pop_back();
+    return result;
+}
+
+std::string get_alm_version() {
+    std::string offset_str = "0x" + exec("objdump -t ../extern/amd-libm/lib/libalm.so --section=.rodata | grep -m1 "
+                                         "ALM_VERSION_STRING | cut -d' ' -f 1");
+    size_t offset = strtol(offset_str.c_str(), NULL, 0);
+    FILE *obj = fopen("../extern/amd-libm/lib/libalm.so", "r");
+    fseek(obj, offset, 0);
+    char buf[16];
+    fread(buf, sizeof(char), 16, obj);
+    fclose(obj);
+    return buf;
+}
+
+std::string get_sleef_version() {
+    return std::to_string(SLEEF_VERSION_MAJOR) + "." + std::to_string(SLEEF_VERSION_MINOR) + "." +
+           std::to_string(SLEEF_VERSION_PATCHLEVEL);
+}
+
+std::string get_af_version() {
+    return std::to_string(VECTORCLASS_H / 10000) + "." + std::to_string((VECTORCLASS_H / 100) % 100) + "." +
+           std::to_string(VECTORCLASS_H % 10);
+}
+
+std::string get_boost_version() {
+    return std::to_string(BOOST_VERSION / 100000) + "." + std::to_string((BOOST_VERSION / 100) % 1000) + "." +
+           std::to_string(BOOST_VERSION % 100);
+}
+
+std::string get_gsl_version() { return std::to_string(GSL_MAJOR_VERSION) + "." + std::to_string(GSL_MINOR_VERSION); }
+
+std::string get_sctl_version() { return exec("cd ../extern/SCTL; git describe --tags"); }
+
+std::string get_baobzi_version() { return exec("cd ../extern/baobzi; git describe --tags").substr(1); }
+
+std::string get_eigen_version() {
+    return std::to_string(EIGEN_WORLD_VERSION) + "." + std::to_string(EIGEN_MAJOR_VERSION) + "." +
+           std::to_string(EIGEN_MINOR_VERSION);
+}
+
+struct toolchain_info_t {
+    std::string compiler;
+    std::string compilervers;
+    std::string libcvers;
+
+    toolchain_info_t() {
+#ifdef __GNUC__
+        compiler = "gcc";
+        compilervers =
+            std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__) + "." + std::to_string(__GNUC_PATCHLEVEL__);
+#endif
+
+        libcvers = gnu_get_libc_version();
+    }
+};
+
+struct host_info_t {
+    std::string cpu_name;
+    std::string L1d;
+    std::string L1i;
+    std::string L2;
+    std::string L3;
+
+    host_info_t() {
+        cpu_name = exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3");
+        L1d = exec("lscpu | grep L1d | awk '{print $3}'");
+        L1i = exec("lscpu | grep L1i | awk '{print $3}'");
+        L2 = exec("lscpu | grep L2 | awk '{print $3}'");
+        L3 = exec("lscpu | grep L3 | awk '{print $3}'");
+    }
+};
+
+struct library_info_t {
+    std::string name;
+    std::string version;
+};
+
+const host_info_t host_info;
+const library_info_t libraries_info[] = {
+    {"sctl", get_sctl_version()},   {"baobzi", get_baobzi_version()},
+    {"boost", get_boost_version()}, {"amdlibm", get_alm_version()},
+    {"sleef", get_sleef_version()}, {"gsl", get_gsl_version()},
+    {"agnerfog", get_af_version()}, {"baobzi", get_baobzi_version()},
+    {"eigen", get_eigen_version()}, {"misc", "NA"},
+};
+const toolchain_info_t toolchain_info;
 
 struct timespec get_wtime() {
     struct timespec ts;
@@ -293,54 +398,6 @@ inline cdouble gsl_complex_wrapper(cdouble z, int (*f)(double, double, gsl_sf_re
     return cdouble{re.val, im.val};
 }
 
-std::string exec(const char *cmd) {
-    // https://stackoverflow.com/a/478960
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-    result.pop_back();
-    return result;
-}
-
-std::string get_alm_version() {
-    std::string offset_str = "0x" + exec("objdump -t ../extern/amd-libm/lib/libalm.so --section=.rodata | grep -m1 "
-                                         "ALM_VERSION_STRING | cut -d' ' -f 1");
-    size_t offset = strtol(offset_str.c_str(), NULL, 0);
-    FILE *obj = fopen("../extern/amd-libm/lib/libalm.so", "r");
-    fseek(obj, offset, 0);
-    char buf[16];
-    fread(buf, sizeof(char), 16, obj);
-    fclose(obj);
-    return buf;
-}
-
-std::string get_sleef_version() {
-    return std::to_string(SLEEF_VERSION_MAJOR) + "." + std::to_string(SLEEF_VERSION_MINOR) + "." +
-           std::to_string(SLEEF_VERSION_PATCHLEVEL);
-}
-
-std::string get_af_version() {
-    return std::to_string(VECTORCLASS_H / 10000) + "." + std::to_string((VECTORCLASS_H / 100) % 100) + "." +
-           std::to_string(VECTORCLASS_H % 10);
-}
-
-std::string get_sctl_version() { return exec("cd ../extern/SCTL; git describe --tags"); }
-
-std::string get_baobzi_version() { return exec("cd ../extern/baobzi; git describe --tags").substr(1); }
-
-std::string get_eigen_version() {
-    return std::to_string(EIGEN_WORLD_VERSION) + "." + std::to_string(EIGEN_MAJOR_VERSION) + "." +
-           std::to_string(EIGEN_MINOR_VERSION);
-}
-
-std::string get_cpu_name() { return exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3"); }
-
 double baobzi_fun_wrapper(const double *x, const void *data) {
     auto *myfun = (std::function<double(double)> *)data;
     return (*myfun)(*x);
@@ -361,6 +418,12 @@ std::shared_ptr<baobzi::Baobzi> create_baobzi_func(void *infun, const std::pair<
 }
 
 int main(int argc, char *argv[]) {
+    std::cout << host_info.cpu_name << std::endl;
+    std::cout << "    " + toolchain_info.compiler + ": " + toolchain_info.compilervers << std::endl;
+    std::cout << "    libc: " + toolchain_info.libcvers << std::endl;
+    for (auto &library_info : libraries_info)
+        std::cout << "    " + library_info.name + ": " + library_info.version << std::endl;
+
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
     std::unordered_map<std::string, Params> params = {
@@ -1170,7 +1233,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    const std::vector<std::pair<int, int>> run_sets = {{1024, 1e4}, {1024 * 1e4, 1}};
+    std::vector<std::pair<int, int>> run_sets;
+    for (uint8_t shift = 0; shift <= 14; shift += 2)
+        run_sets.push_back({1 << (10 + shift), 1 << (14 - shift)});
+
     for (auto &run_set : run_sets) {
         const auto &[n_eval, n_repeat] = run_set;
         std::cerr << "Running benchmark with input vector of length " << n_eval << " and " << n_repeat << " repeats.\n";
