@@ -64,6 +64,13 @@ std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
 } // namespace af
 
+namespace SCTL {
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
+} // namespace SCTL
+
 } // namespace sf::functions
 
 #endif

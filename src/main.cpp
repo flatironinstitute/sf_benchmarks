@@ -23,8 +23,6 @@
 
 #include <sqlite3.h>
 
-#include <dlfcn.h>
-
 const sf::utils::host_info_t host_info;
 const sf::utils::library_info_t libraries_info[] = {
     {"sctl", sf::utils::get_sctl_version()},   {"baobzi", sf::utils::get_baobzi_version()},
@@ -377,69 +375,10 @@ int main(int argc, char *argv[]) {
     auto &af_funs_fx8 = sf::functions::af::get_funs_fx8();
     auto &af_funs_fx16 = sf::functions::af::get_funs_fx16();
 
-    std::unordered_map<std::string, multi_eval_func<float>> sctl_funs_fx8 = {
-        {"copy", sctl_apply<float, 8>([](const sctl_fx8 &x) { return x; })},
-        {"exp", sctl_apply<float, 8>([](const sctl_fx8 &x) { return sctl::approx_exp<7>(x); })},
-        {"sin", sctl_apply<float, 8>([](const sctl_fx8 &x) {
-             sctl_fx8 sinx, cosx;
-             sctl::approx_sincos<7>(sinx, cosx, x);
-             return sinx;
-         })},
-        {"cos", sctl_apply<float, 8>([](const sctl_fx8 &x) {
-             sctl_fx8 sinx, cosx;
-             sctl::approx_sincos<7>(sinx, cosx, x);
-             return cosx;
-         })},
-        {"rsqrt", sctl_apply<float, 8>([](const sctl_fx8 &x) { return sctl::approx_rsqrt<7>(x); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<float>> sctl_funs_fx16 = {
-        {"copy", sctl_apply<float, 16>([](const sctl_fx16 &x) { return x; })},
-        {"exp", sctl_apply<float, 16>([](const sctl_fx16 &x) { return sctl::approx_exp<7>(x); })},
-        {"sin", sctl_apply<float, 16>([](const sctl_fx16 &x) {
-             sctl_fx16 sinx, cosx;
-             sctl::approx_sincos<7>(sinx, cosx, x);
-             return sinx;
-         })},
-        {"cos", sctl_apply<float, 16>([](const sctl_fx16 &x) {
-             sctl_fx16 sinx, cosx;
-             sctl::approx_sincos<7>(sinx, cosx, x);
-             return cosx;
-         })},
-        {"rsqrt", sctl_apply<float, 16>([](const sctl_fx16 &x) { return sctl::approx_rsqrt<7>(x); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<double>> sctl_funs_dx4 = {
-        {"copy", sctl_apply<double, 4>([](const sctl_dx4 &x) { return x; })},
-        {"exp", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_exp<16>(x); })},
-        {"sin", sctl_apply<double, 4>([](const sctl_dx4 &x) {
-             sctl_dx4 sinx, cosx;
-             sctl::approx_sincos<16>(sinx, cosx, x);
-             return sinx;
-         })},
-        {"cos", sctl_apply<double, 4>([](const sctl_dx4 &x) {
-             sctl_dx4 sinx, cosx;
-             sctl::approx_sincos<16>(sinx, cosx, x);
-             return cosx;
-         })},
-        {"rsqrt", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_rsqrt<16>(x); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<double>> sctl_funs_dx8 = {
-        {"copy", sctl_apply<double, 8>([](const sctl_dx8 &x) { return x; })},
-        {"exp", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_exp<16>(x); })},
-        {"sin", sctl_apply<double, 8>([](const sctl_dx8 &x) {
-             sctl_dx8 sinx, cosx;
-             sctl::approx_sincos<16>(sinx, cosx, x);
-             return sinx;
-         })},
-        {"cos", sctl_apply<double, 8>([](const sctl_dx8 &x) {
-             sctl_dx8 sinx, cosx;
-             sctl::approx_sincos<16>(sinx, cosx, x);
-             return cosx;
-         })},
-        {"rsqrt", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_rsqrt<16>(x); })},
-    };
+    auto &sctl_funs_dx4 = sf::functions::SCTL::get_funs_dx4();
+    auto &sctl_funs_dx8 = sf::functions::SCTL::get_funs_dx8();
+    auto &sctl_funs_fx8 = sf::functions::SCTL::get_funs_fx8();
+    auto &sctl_funs_fx16 = sf::functions::SCTL::get_funs_fx16();
 
     std::unordered_map<std::string, OPS::OPS> eigen_funs = {
         {"sin", OPS::sin},         {"cos", OPS::cos},      {"tan", OPS::tan},     {"sinh", OPS::sinh},
@@ -490,7 +429,6 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs_fx8)
         fun_union.insert(kv.first);
-#ifdef __AVX512F__
     for (auto kv : af_funs_dx8)
         fun_union.insert(kv.first);
     for (auto kv : sctl_funs_dx8)
@@ -499,7 +437,6 @@ int main(int argc, char *argv[]) {
         fun_union.insert(kv.first);
     for (auto kv : sleef_funs_fx16)
         fun_union.insert(kv.first);
-#endif
 
     std::set<std::string> keys_to_eval;
     if (input_keys.size() > 0)
@@ -553,11 +490,9 @@ int main(int argc, char *argv[]) {
             std::cout << test_func(key, "af_fx8", af_funs_fx8, params, fvals, n_repeat);
             std::cout << test_func(key, "sctl_fx8", sctl_funs_fx8, params, fvals, n_repeat);
             std::cout << test_func(key, "eigen_fxx", eigen_funs, params, fvals, n_repeat);
-#ifdef __AVX512F__
             std::cout << test_func(key, "agnerfog_fx16", af_funs_fx16, params, fvals, n_repeat);
             std::cout << test_func(key, "sctl_fx16", sctl_funs_fx16, params, fvals, n_repeat);
             std::cout << test_func(key, "sleef_fx16", sleef_funs_fx16, params, fvals, n_repeat);
-#endif
 
             std::cout << test_func(key, "stl_dx1", stl_funs_dx1, params, vals, n_repeat);
             std::cout << test_func(key, "fort_dx1", fort_funs, params, vals, n_repeat);
@@ -573,11 +508,10 @@ int main(int argc, char *argv[]) {
             std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, n_repeat);
             std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, n_repeat);
             std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, n_repeat);
-#ifdef __AVX512F__
             std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, n_repeat);
             std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, n_repeat);
             std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, n_repeat);
-#endif
+
             std::cout << "\n";
         }
     }
