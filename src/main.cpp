@@ -40,51 +40,6 @@ class Params {
     std::pair<double, double> domain{0.0, 1.0};
 };
 
-typedef std::complex<double> cdouble;
-typedef sctl::Vec<double, 4> sctl_dx4;
-typedef sctl::Vec<double, 8> sctl_dx8;
-
-typedef sctl::Vec<float, 8> sctl_fx8;
-typedef sctl::Vec<float, 16> sctl_fx16;
-
-typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
-
-template <class VAL_T>
-using multi_eval_func = std::function<void(const VAL_T *, VAL_T *, size_t)>;
-
-template <class VAL_T, int VecLen, class F>
-std::function<void(const VAL_T *, VAL_T *, size_t)> sctl_apply(const F &f) {
-    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
-        using Vec = sctl::Vec<VAL_T, VecLen>;
-        for (size_t i = 0; i < N; i += VecLen) {
-            Vec v = Vec::LoadAligned(vals + i);
-            f(v).StoreAligned(res + i);
-        }
-    };
-    return fn;
-}
-
-template <class VEC_T, class VAL_T, class F>
-std::function<void(const VAL_T *, VAL_T *, size_t)> vec_func_apply(const F &f) {
-    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
-        for (size_t i = 0; i < N; i += VEC_T::size()) {
-            VEC_T x;
-            x.load_a(vals + i);
-            VEC_T(f(x)).store_a(res + i);
-        }
-    };
-    return fn;
-}
-
-template <class VAL_T, class F>
-std::function<void(const VAL_T *, VAL_T *, size_t)> scalar_func_apply(const F &f) {
-    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
-        for (size_t i = 0; i < N; i++)
-            res[i] = f(vals[i]);
-    };
-    return fn;
-}
-
 template <typename VAL_T>
 class BenchResult {
   public:
@@ -379,75 +334,10 @@ int main(int argc, char *argv[]) {
         {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}}, {"bessel_Y2", {.domain{0.1, 30.0}}},
     };
 
-    void *handle = dlopen("libalm.so", RTLD_NOW);
-
-    using C_FUN1F = float (*)(float);
-    using C_FUN2F = float (*)(float, float);
-    C_FUN1F amd_sinf = (C_FUN1F)dlsym(handle, "amd_sinf");
-    C_FUN1F amd_cosf = (C_FUN1F)dlsym(handle, "amd_cosf");
-    C_FUN1F amd_tanf = (C_FUN1F)dlsym(handle, "amd_tanf");
-    C_FUN1F amd_sinhf = (C_FUN1F)dlsym(handle, "amd_sinhf");
-    C_FUN1F amd_coshf = (C_FUN1F)dlsym(handle, "amd_coshf");
-    C_FUN1F amd_tanhf = (C_FUN1F)dlsym(handle, "amd_tanhf");
-    C_FUN1F amd_asinf = (C_FUN1F)dlsym(handle, "amd_asinf");
-    C_FUN1F amd_acosf = (C_FUN1F)dlsym(handle, "amd_acosf");
-    C_FUN1F amd_atanf = (C_FUN1F)dlsym(handle, "amd_atanf");
-    C_FUN1F amd_asinhf = (C_FUN1F)dlsym(handle, "amd_asinhf");
-    C_FUN1F amd_acoshf = (C_FUN1F)dlsym(handle, "amd_acoshf");
-    C_FUN1F amd_atanhf = (C_FUN1F)dlsym(handle, "amd_atanhf");
-    C_FUN1F amd_logf = (C_FUN1F)dlsym(handle, "amd_logf");
-    C_FUN1F amd_log2f = (C_FUN1F)dlsym(handle, "amd_log2f");
-    C_FUN1F amd_log10f = (C_FUN1F)dlsym(handle, "amd_log10f");
-    C_FUN1F amd_expf = (C_FUN1F)dlsym(handle, "amd_expf");
-    C_FUN1F amd_exp2f = (C_FUN1F)dlsym(handle, "amd_exp2f");
-    C_FUN1F amd_exp10f = (C_FUN1F)dlsym(handle, "amd_exp10f");
-    C_FUN1F amd_sqrtf = (C_FUN1F)dlsym(handle, "amd_sqrtf");
-    C_FUN2F amd_powf = (C_FUN2F)dlsym(handle, "amd_powf");
-
-    using C_FUN1D = double (*)(double);
-    using C_FUN2D = double (*)(double, double);
-    C_FUN1D amd_sin = (C_FUN1D)dlsym(handle, "amd_sin");
-    C_FUN1D amd_cos = (C_FUN1D)dlsym(handle, "amd_cos");
-    C_FUN1D amd_tan = (C_FUN1D)dlsym(handle, "amd_tan");
-    C_FUN1D amd_sinh = (C_FUN1D)dlsym(handle, "amd_sinh");
-    C_FUN1D amd_cosh = (C_FUN1D)dlsym(handle, "amd_cosh");
-    C_FUN1D amd_tanh = (C_FUN1D)dlsym(handle, "amd_tanh");
-    C_FUN1D amd_asin = (C_FUN1D)dlsym(handle, "amd_asin");
-    C_FUN1D amd_acos = (C_FUN1D)dlsym(handle, "amd_acos");
-    C_FUN1D amd_atan = (C_FUN1D)dlsym(handle, "amd_atan");
-    C_FUN1D amd_asinh = (C_FUN1D)dlsym(handle, "amd_asinh");
-    C_FUN1D amd_acosh = (C_FUN1D)dlsym(handle, "amd_acosh");
-    C_FUN1D amd_atanh = (C_FUN1D)dlsym(handle, "amd_atanh");
-    C_FUN1D amd_log = (C_FUN1D)dlsym(handle, "amd_log");
-    C_FUN1D amd_log2 = (C_FUN1D)dlsym(handle, "amd_log2");
-    C_FUN1D amd_log10 = (C_FUN1D)dlsym(handle, "amd_log10");
-    C_FUN1D amd_exp = (C_FUN1D)dlsym(handle, "amd_exp");
-    C_FUN1D amd_exp2 = (C_FUN1D)dlsym(handle, "amd_exp2");
-    C_FUN1D amd_exp10 = (C_FUN1D)dlsym(handle, "amd_exp10");
-    C_FUN1D amd_sqrt = (C_FUN1D)dlsym(handle, "amd_sqrt");
-    C_FUN2D amd_pow = (C_FUN2D)dlsym(handle, "amd_pow");
-
-    using C_FX8_FUN1F = Vec8f (*)(Vec8f);
-    using C_FX8_FUN2F = Vec8f (*)(Vec8f, Vec8f);
-    C_FX8_FUN1F amd_vrs8_sinf = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_sinf");
-    C_FX8_FUN1F amd_vrs8_cosf = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_cosf");
-    C_FX8_FUN1F amd_vrs8_tanf = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_tanf");
-    C_FX8_FUN1F amd_vrs8_logf = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_logf");
-    C_FX8_FUN1F amd_vrs8_log2f = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_log2f");
-    C_FX8_FUN1F amd_vrs8_expf = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_expf");
-    C_FX8_FUN1F amd_vrs8_exp2f = (C_FX8_FUN1F)dlsym(handle, "amd_vrs8_exp2f");
-    C_FX8_FUN2F amd_vrs8_powf = (C_FX8_FUN2F)dlsym(handle, "amd_vrs8_powf");
-
-    using C_DX4_FUN1D = Vec4d (*)(Vec4d);
-    using C_DX4_FUN2D = Vec4d (*)(Vec4d, Vec4d);
-    C_DX4_FUN1D amd_vrd4_sin = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_sin");
-    C_DX4_FUN1D amd_vrd4_cos = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_cos");
-    C_DX4_FUN1D amd_vrd4_tan = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_tan");
-    C_DX4_FUN1D amd_vrd4_log = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_log");
-    C_DX4_FUN1D amd_vrd4_log2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_log2");
-    C_DX4_FUN1D amd_vrd4_exp = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp");
-    C_DX4_FUN1D amd_vrd4_exp2 = (C_DX4_FUN1D)dlsym(handle, "amd_vrd4_exp2");
-    C_DX4_FUN2D amd_vrd4_pow = (C_DX4_FUN2D)dlsym(handle, "amd_vrd4_pow");
+    auto &amdlibm_funs_dx1 = sf::functions::amd::get_funs_dx1();
+    auto &amdlibm_funs_dx4 = sf::functions::amd::get_funs_dx4();
+    auto &amdlibm_funs_fx1 = sf::functions::amd::get_funs_fx1();
+    auto &amdlibm_funs_fx8 = sf::functions::amd::get_funs_fx8();
 
     std::unordered_map<std::string, multi_eval_func<double>> fort_funs = {
         {"bessel_Y0", scalar_func_apply<double>([](double x) -> double {
@@ -661,82 +551,6 @@ int main(int argc, char *argv[]) {
         {"rsqrt", scalar_func_apply<double>([](double x) -> double { return 1.0 / std::sqrt(x); })},
         {"pow3.5", scalar_func_apply<double>([](double x) -> double { return std::pow(x, 3.5); })},
         {"pow13", scalar_func_apply<double>([](double x) -> double { return std::pow(x, 13); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<float>> amdlibm_funs_fx1 = {
-        {"sin", scalar_func_apply<float>([&amd_sinf](float x) -> float { return amd_sinf(x); })},
-        {"cos", scalar_func_apply<float>([&amd_cosf](float x) -> float { return amd_cosf(x); })},
-        {"tan", scalar_func_apply<float>([&amd_tanf](float x) -> float { return amd_tanf(x); })},
-        {"sinh", scalar_func_apply<float>([&amd_sinhf](float x) -> float { return amd_sinhf(x); })},
-        {"cosh", scalar_func_apply<float>([&amd_coshf](float x) -> float { return amd_coshf(x); })},
-        {"tanh", scalar_func_apply<float>([&amd_tanhf](float x) -> float { return amd_tanhf(x); })},
-        {"asin", scalar_func_apply<float>([&amd_asinf](float x) -> float { return amd_asinf(x); })},
-        {"acos", scalar_func_apply<float>([&amd_acosf](float x) -> float { return amd_acosf(x); })},
-        {"atan", scalar_func_apply<float>([&amd_atanf](float x) -> float { return amd_atanf(x); })},
-        {"asinh", scalar_func_apply<float>([&amd_asinhf](float x) -> float { return amd_asinhf(x); })},
-        {"acosh", scalar_func_apply<float>([&amd_acoshf](float x) -> float { return amd_acoshf(x); })},
-        {"atanh", scalar_func_apply<float>([&amd_atanhf](float x) -> float { return amd_atanhf(x); })},
-        {"log", scalar_func_apply<float>([&amd_logf](float x) -> float { return amd_logf(x); })},
-        {"log2", scalar_func_apply<float>([&amd_log2f](float x) -> float { return amd_log2f(x); })},
-        {"log10", scalar_func_apply<float>([&amd_log10f](float x) -> float { return amd_log10f(x); })},
-        {"exp", scalar_func_apply<float>([&amd_expf](float x) -> float { return amd_expf(x); })},
-        {"exp2", scalar_func_apply<float>([&amd_exp2f](float x) -> float { return amd_exp2f(x); })},
-        {"exp10", scalar_func_apply<float>([&amd_exp10f](float x) -> float { return amd_exp10f(x); })},
-        {"sqrt", scalar_func_apply<float>([&amd_sqrtf](float x) -> float { return amd_sqrtf(x); })},
-        {"pow3.5", scalar_func_apply<float>([&amd_powf](float x) -> float { return amd_powf(x, 3.5); })},
-        {"pow13", scalar_func_apply<float>([&amd_powf](float x) -> float { return amd_powf(x, 13); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<double>> amdlibm_funs_dx1 = {
-        {"sin", scalar_func_apply<double>([&amd_sin](double x) -> double { return amd_sin(x); })},
-        {"cos", scalar_func_apply<double>([&amd_cos](double x) -> double { return amd_cos(x); })},
-        {"tan", scalar_func_apply<double>([&amd_tan](double x) -> double { return amd_tan(x); })},
-        {"sinh", scalar_func_apply<double>([&amd_sinh](double x) -> double { return amd_sinh(x); })},
-        {"cosh", scalar_func_apply<double>([&amd_cosh](double x) -> double { return amd_cosh(x); })},
-        {"tanh", scalar_func_apply<double>([&amd_tanh](double x) -> double { return amd_tanh(x); })},
-        {"asin", scalar_func_apply<double>([&amd_asin](double x) -> double { return amd_asin(x); })},
-        {"acos", scalar_func_apply<double>([&amd_acos](double x) -> double { return amd_acos(x); })},
-        {"atan", scalar_func_apply<double>([&amd_atan](double x) -> double { return amd_atan(x); })},
-        {"asinh", scalar_func_apply<double>([&amd_asinh](double x) -> double { return amd_asinh(x); })},
-        {"acosh", scalar_func_apply<double>([&amd_acosh](double x) -> double { return amd_acosh(x); })},
-        {"atanh", scalar_func_apply<double>([&amd_atanh](double x) -> double { return amd_atanh(x); })},
-        {"log", scalar_func_apply<double>([&amd_log](double x) -> double { return amd_log(x); })},
-        {"log2", scalar_func_apply<double>([&amd_log2](double x) -> double { return amd_log2(x); })},
-        {"log10", scalar_func_apply<double>([&amd_log10](double x) -> double { return amd_log10(x); })},
-        {"exp", scalar_func_apply<double>([&amd_exp](double x) -> double { return amd_exp(x); })},
-        {"exp2", scalar_func_apply<double>([&amd_exp2](double x) -> double { return amd_exp2(x); })},
-        {"exp10", scalar_func_apply<double>([&amd_exp10](double x) -> double { return amd_exp10(x); })},
-        {"sqrt", scalar_func_apply<double>([&amd_sqrt](double x) -> double { return amd_sqrt(x); })},
-        {"pow3.5", scalar_func_apply<double>([&amd_pow](double x) -> double { return amd_pow(x, 3.5); })},
-        {"pow13", scalar_func_apply<double>([&amd_pow](double x) -> double { return amd_pow(x, 13); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<double>> amdlibm_funs_dx4 = {
-        {"sin", vec_func_apply<Vec4d, double>([&amd_vrd4_sin](Vec4d x) -> Vec4d { return amd_vrd4_sin(x); })},
-        {"cos", vec_func_apply<Vec4d, double>([&amd_vrd4_cos](Vec4d x) -> Vec4d { return amd_vrd4_cos(x); })},
-        {"tan", vec_func_apply<Vec4d, double>([&amd_vrd4_tan](Vec4d x) -> Vec4d { return amd_vrd4_tan(x); })},
-        {"log", vec_func_apply<Vec4d, double>([&amd_vrd4_log](Vec4d x) -> Vec4d { return amd_vrd4_log(x); })},
-        {"log2", vec_func_apply<Vec4d, double>([&amd_vrd4_log2](Vec4d x) -> Vec4d { return amd_vrd4_log2(x); })},
-        {"exp", vec_func_apply<Vec4d, double>([&amd_vrd4_exp](Vec4d x) -> Vec4d { return amd_vrd4_exp(x); })},
-        {"exp2", vec_func_apply<Vec4d, double>([&amd_vrd4_exp2](Vec4d x) -> Vec4d { return amd_vrd4_exp2(x); })},
-        {"pow3.5",
-         vec_func_apply<Vec4d, double>([&amd_vrd4_pow](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{3.5}); })},
-        {"pow13",
-         vec_func_apply<Vec4d, double>([&amd_vrd4_pow](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{13}); })},
-    };
-
-    std::unordered_map<std::string, multi_eval_func<float>> amdlibm_funs_fx8 = {
-        {"sin", vec_func_apply<Vec8f, float>([&amd_vrs8_sinf](Vec8f x) -> Vec8f { return amd_vrs8_sinf(x); })},
-        {"cos", vec_func_apply<Vec8f, float>([&amd_vrs8_cosf](Vec8f x) -> Vec8f { return amd_vrs8_cosf(x); })},
-        {"tan", vec_func_apply<Vec8f, float>([&amd_vrs8_tanf](Vec8f x) -> Vec8f { return amd_vrs8_tanf(x); })},
-        {"log", vec_func_apply<Vec8f, float>([&amd_vrs8_logf](Vec8f x) -> Vec8f { return amd_vrs8_logf(x); })},
-        {"log2", vec_func_apply<Vec8f, float>([&amd_vrs8_log2f](Vec8f x) -> Vec8f { return amd_vrs8_log2f(x); })},
-        {"exp", vec_func_apply<Vec8f, float>([&amd_vrs8_expf](Vec8f x) -> Vec8f { return amd_vrs8_expf(x); })},
-        {"exp2", vec_func_apply<Vec8f, float>([&amd_vrs8_exp2f](Vec8f x) -> Vec8f { return amd_vrs8_exp2f(x); })},
-        {"pow3.5",
-         vec_func_apply<Vec8f, float>([&amd_vrs8_powf](Vec8f x) -> Vec8f { return amd_vrs8_powf(x, Vec8f{3.5}); })},
-        {"pow13",
-         vec_func_apply<Vec8f, float>([&amd_vrs8_powf](Vec8f x) -> Vec8f { return amd_vrs8_powf(x, Vec8f{13}); })},
     };
 
     std::unordered_map<std::string, multi_eval_func<float>> sleef_funs_fx1 = {

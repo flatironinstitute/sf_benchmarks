@@ -23,4 +23,15 @@ void fort_bessel_yn_(int *, double *, double *);
 #include <gnu/libc-version.h>
 #include <gsl/gsl_version.h>
 
+#include <sf_eval.hpp>
+
+namespace sf::functions {
+namespace amd {
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
+} // namespace amd
+} // namespace sf::functions
+
 #endif
