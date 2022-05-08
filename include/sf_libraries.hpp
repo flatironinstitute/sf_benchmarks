@@ -71,6 +71,38 @@ std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
 } // namespace SCTL
 
+// https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
+namespace eigen {
+enum OPS {
+    cos,
+    sin,
+    tan,
+    cosh,
+    sinh,
+    tanh,
+    exp,
+    log,
+    log10,
+    pow35,
+    pow13,
+    asin,
+    acos,
+    atan,
+    asinh,
+    acosh,
+    atanh,
+    erf,
+    erfc,
+    lgamma,
+    digamma,
+    ndtri,
+    sqrt,
+    rsqrt
+};
+
+std::unordered_map<std::string, OPS> &get_funs();
+} // namespace eigen
+
 } // namespace sf::functions
 
 #endif

@@ -84,6 +84,12 @@ Eigen::VectorX<VAL_T> transform_domain(const Eigen::VectorX<VAL_T> &vals, double
     return vals.array() * delta + lower;
 }
 
+#define EIGEN_CASE(OP)                                                                                                 \
+    case sf::functions::eigen::OPS::OP: {                                                                              \
+        res_eigen = vals.array().OP();                                                                                 \
+        break;                                                                                                         \
+    }
+
 template <typename FUN_T, typename VAL_T>
 BenchResult<VAL_T>
 test_func(const std::string name, const std::string library_prefix, const std::unordered_map<std::string, FUN_T> funs,
@@ -112,6 +118,41 @@ test_func(const std::string name, const std::string library_prefix, const std::u
             }
         } else if constexpr (std::is_same_v<FUN_T, std::shared_ptr<baobzi::Baobzi>>) {
             (*f)(vals.data(), resptr, vals.size());
+        } else if constexpr (std::is_same_v<FUN_T, sf::functions::eigen::OPS>) {
+            Eigen::VectorX<VAL_T> &res_eigen = res.res;
+
+            switch (f) {
+                EIGEN_CASE(cos)
+                EIGEN_CASE(sin)
+                EIGEN_CASE(tan)
+                EIGEN_CASE(cosh)
+                EIGEN_CASE(sinh)
+                EIGEN_CASE(tanh)
+                EIGEN_CASE(exp)
+                EIGEN_CASE(log)
+                EIGEN_CASE(log10)
+                EIGEN_CASE(asin)
+                EIGEN_CASE(acos)
+                EIGEN_CASE(atan)
+                EIGEN_CASE(asinh)
+                EIGEN_CASE(acosh)
+                EIGEN_CASE(atanh)
+                EIGEN_CASE(erf)
+                EIGEN_CASE(erfc)
+                EIGEN_CASE(lgamma)
+                EIGEN_CASE(digamma)
+                EIGEN_CASE(ndtri)
+                EIGEN_CASE(sqrt)
+                EIGEN_CASE(rsqrt)
+            case sf::functions::eigen::OPS::pow35: {
+                res_eigen = vals.array().pow(3.5);
+                break;
+            }
+            case sf::functions::eigen::OPS::pow13: {
+                res_eigen = vals.array().pow(13);
+                break;
+            }
+            }
         } else {
             f(vals.data(), resptr, vals.size());
         }
@@ -122,101 +163,7 @@ test_func(const std::string name, const std::string library_prefix, const std::u
 
     return res;
 }
-
-// https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
-namespace OPS {
-enum OPS {
-    cos,
-    sin,
-    tan,
-    cosh,
-    sinh,
-    tanh,
-    exp,
-    log,
-    log10,
-    pow35,
-    pow13,
-    asin,
-    acos,
-    atan,
-    asinh,
-    acosh,
-    atanh,
-    erf,
-    erfc,
-    lgamma,
-    digamma,
-    ndtri,
-    sqrt,
-    rsqrt
-};
-}
-
-#define EIGEN_CASE(OP)                                                                                                 \
-    case OPS::OP: {                                                                                                    \
-        res_eigen = x.array().OP();                                                                                    \
-        break;                                                                                                         \
-    }
-
-template <typename VAL_T>
-BenchResult<VAL_T> test_func(const std::string name, const std::string library_prefix,
-                             const std::unordered_map<std::string, OPS::OPS> funs,
-                             std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in,
-                             size_t Nrepeat) {
-    const std::string label = library_prefix + "_" + name;
-    if (!funs.count(name))
-        return BenchResult<VAL_T>(label);
-
-    const Params &par = params[name];
-    Eigen::VectorX<VAL_T> x = transform_domain(vals_in, par.domain.first, par.domain.second);
-
-    BenchResult<VAL_T> res(label, x.size(), x.size() * Nrepeat, par);
-
-    Eigen::VectorX<VAL_T> &res_eigen = res.res;
-
-    OPS::OPS OP = funs.at(name);
-
-    sf::utils::timer timer;
-    for (long k = 0; k < Nrepeat; k++)
-        switch (OP) {
-            EIGEN_CASE(cos)
-            EIGEN_CASE(sin)
-            EIGEN_CASE(tan)
-            EIGEN_CASE(cosh)
-            EIGEN_CASE(sinh)
-            EIGEN_CASE(tanh)
-            EIGEN_CASE(exp)
-            EIGEN_CASE(log)
-            EIGEN_CASE(log10)
-            EIGEN_CASE(asin)
-            EIGEN_CASE(acos)
-            EIGEN_CASE(atan)
-            EIGEN_CASE(asinh)
-            EIGEN_CASE(acosh)
-            EIGEN_CASE(atanh)
-            EIGEN_CASE(erf)
-            EIGEN_CASE(erfc)
-            EIGEN_CASE(lgamma)
-            EIGEN_CASE(digamma)
-            EIGEN_CASE(ndtri)
-            EIGEN_CASE(sqrt)
-            EIGEN_CASE(rsqrt)
-        case OPS::pow35: {
-            res_eigen = x.array().pow(3.5);
-            break;
-        }
-        case OPS::pow13: {
-            res_eigen = x.array().pow(13);
-            break;
-        }
-        }
-
-    timer.stop();
-    res.eval_time = timer.elapsed();
-
-    return res;
-}
+#undef EIGEN_CASE
 
 std::set<std::string> parse_args(int argc, char *argv[]) {
     std::set<std::string> res;
@@ -380,20 +327,13 @@ int main(int argc, char *argv[]) {
     auto &sctl_funs_fx8 = sf::functions::SCTL::get_funs_fx8();
     auto &sctl_funs_fx16 = sf::functions::SCTL::get_funs_fx16();
 
-    std::unordered_map<std::string, OPS::OPS> eigen_funs = {
-        {"sin", OPS::sin},         {"cos", OPS::cos},      {"tan", OPS::tan},     {"sinh", OPS::sinh},
-        {"cosh", OPS::cosh},       {"tanh", OPS::tanh},    {"exp", OPS::exp},     {"log", OPS::log},
-        {"log10", OPS::log10},     {"pow3.5", OPS::pow35}, {"pow13", OPS::pow13}, {"asin", OPS::asin},
-        {"acos", OPS::acos},       {"atan", OPS::atan},    {"asinh", OPS::asinh}, {"atanh", OPS::atanh},
-        {"acosh", OPS::acosh},     {"erf", OPS::erf},      {"erfc", OPS::erfc},   {"lgamma", OPS::lgamma},
-        {"digamma", OPS::digamma}, {"ndtri", OPS::ndtri},  {"sqrt", OPS::sqrt},   {"rsqrt", OPS::rsqrt},
-    };
+    auto &eigen_funs = sf::functions::eigen::get_funs();
 
+    std::set<std::string> fun_union;
 #define merge_into_set(FUNS)                                                                                           \
     for (auto kv : FUNS)                                                                                               \
         fun_union.insert(kv.first);
 
-    std::set<std::string> fun_union;
     merge_into_set(amdlibm_funs_fx1);
     merge_into_set(amdlibm_funs_dx1);
     merge_into_set(boost_funs_fx1);
