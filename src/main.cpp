@@ -78,12 +78,6 @@ std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
     return os;
 }
 
-template <typename VAL_T>
-Eigen::VectorX<VAL_T> transform_domain(const Eigen::VectorX<VAL_T> &vals, double lower, double upper) {
-    VAL_T delta = upper - lower;
-    return vals.array() * delta + lower;
-}
-
 #define EIGEN_CASE(OP)                                                                                                 \
     case sf::functions::eigen::OPS::OP: {                                                                              \
         res_eigen = vals.array().OP();                                                                                 \
@@ -99,7 +93,7 @@ test_func(const std::string name, const std::string library_prefix, const std::u
         return BenchResult<VAL_T>(label);
 
     const Params &par = params[name];
-    Eigen::VectorX<VAL_T> vals = transform_domain(vals_in, par.domain.first, par.domain.second);
+    Eigen::VectorX<VAL_T> vals = sf::utils::transform_domain(vals_in, par.domain.first, par.domain.second);
 
     size_t res_size = vals.size();
     size_t n_evals = vals.size() * Nrepeat;
@@ -273,42 +267,32 @@ int main(int argc, char *argv[]) {
         {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}}, {"bessel_Y2", {.domain{0.1, 30.0}}},
     };
 
-    std::unordered_map<std::string, multi_eval_func<double>> fort_funs = {
-        {"bessel_Y0", scalar_func_apply<double>([](double x) -> double {
-             int n = 0;
-             double y;
-             fort_bessel_yn_(&n, &x, &y);
-             return y;
-         })},
-        {"bessel_J0", scalar_func_apply<double>([](double x) -> double {
-             int n = 0;
-             double y;
-             fort_bessel_jn_(&n, &x, &y);
-             return y;
-         })},
-    };
-
-    std::unordered_map<std::string, fun_cdx1_x2> misc_funs = {
-        {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
-             cdouble h0, h1;
-             int ifexpon = 1;
-             hank103_((double _Complex *)&z, (double _Complex *)&h0, (double _Complex *)&h1, &ifexpon);
-             return {h0, h1};
-         }}};
+    auto &af_funs_dx4 = sf::functions::af::get_funs_dx4();
+    auto &af_funs_dx8 = sf::functions::af::get_funs_dx8();
+    auto &af_funs_fx8 = sf::functions::af::get_funs_fx8();
+    auto &af_funs_fx16 = sf::functions::af::get_funs_fx16();
 
     auto &amdlibm_funs_dx1 = sf::functions::amd::get_funs_dx1();
     auto &amdlibm_funs_dx4 = sf::functions::amd::get_funs_dx4();
     auto &amdlibm_funs_fx1 = sf::functions::amd::get_funs_fx1();
     auto &amdlibm_funs_fx8 = sf::functions::amd::get_funs_fx8();
 
-    auto &gsl_funs = sf::functions::gsl::get_funs_dx1();
-    auto &gsl_complex_funs = sf::functions::gsl::get_funs_cdx1();
-
     auto &boost_funs_fx1 = sf::functions::boost::get_funs_fx1();
     auto &boost_funs_dx1 = sf::functions::boost::get_funs_dx1();
 
-    auto &stl_funs_fx1 = sf::functions::stl::get_funs_fx1();
-    auto &stl_funs_dx1 = sf::functions::stl::get_funs_dx1();
+    auto &eigen_funs = sf::functions::eigen::get_funs();
+
+    auto &fort_funs = sf::functions::fort::get_funs_dx1();
+
+    auto &gsl_funs = sf::functions::gsl::get_funs_dx1();
+    auto &gsl_complex_funs = sf::functions::gsl::get_funs_cdx1();
+
+    auto &misc_funs_cdx1_x2 = sf::functions::misc::get_funs_cdx1_x2();
+
+    auto &sctl_funs_dx4 = sf::functions::SCTL::get_funs_dx4();
+    auto &sctl_funs_dx8 = sf::functions::SCTL::get_funs_dx8();
+    auto &sctl_funs_fx8 = sf::functions::SCTL::get_funs_fx8();
+    auto &sctl_funs_fx16 = sf::functions::SCTL::get_funs_fx16();
 
     auto &sleef_funs_dx1 = sf::functions::sleef::get_funs_dx1();
     auto &sleef_funs_dx4 = sf::functions::sleef::get_funs_dx4();
@@ -317,47 +301,24 @@ int main(int argc, char *argv[]) {
     auto &sleef_funs_fx8 = sf::functions::sleef::get_funs_fx8();
     auto &sleef_funs_fx16 = sf::functions::sleef::get_funs_fx16();
 
-    auto &af_funs_dx4 = sf::functions::af::get_funs_dx4();
-    auto &af_funs_dx8 = sf::functions::af::get_funs_dx8();
-    auto &af_funs_fx8 = sf::functions::af::get_funs_fx8();
-    auto &af_funs_fx16 = sf::functions::af::get_funs_fx16();
-
-    auto &sctl_funs_dx4 = sf::functions::SCTL::get_funs_dx4();
-    auto &sctl_funs_dx8 = sf::functions::SCTL::get_funs_dx8();
-    auto &sctl_funs_fx8 = sf::functions::SCTL::get_funs_fx8();
-    auto &sctl_funs_fx16 = sf::functions::SCTL::get_funs_fx16();
-
-    auto &eigen_funs = sf::functions::eigen::get_funs();
+    auto &stl_funs_fx1 = sf::functions::stl::get_funs_fx1();
+    auto &stl_funs_dx1 = sf::functions::stl::get_funs_dx1();
 
     std::set<std::string> fun_union;
 #define merge_into_set(FUNS)                                                                                           \
     for (auto kv : FUNS)                                                                                               \
         fun_union.insert(kv.first);
 
+    merge_into_set(af_funs_fx8);
     merge_into_set(amdlibm_funs_fx1);
-    merge_into_set(amdlibm_funs_dx1);
     merge_into_set(boost_funs_fx1);
-    merge_into_set(boost_funs_dx1);
     merge_into_set(eigen_funs);
     merge_into_set(fort_funs);
     merge_into_set(gsl_funs);
-    merge_into_set(gsl_complex_funs);
-    merge_into_set(misc_funs);
+    merge_into_set(misc_funs_cdx1_x2);
+    merge_into_set(sctl_funs_fx8);
     merge_into_set(sleef_funs_fx1);
-    merge_into_set(sleef_funs_dx1);
     merge_into_set(stl_funs_fx1);
-    merge_into_set(stl_funs_dx1);
-
-    merge_into_set(af_funs_dx4);
-    merge_into_set(amdlibm_funs_dx4);
-    merge_into_set(amdlibm_funs_fx8);
-    merge_into_set(sctl_funs_dx4);
-    merge_into_set(sleef_funs_dx4);
-    merge_into_set(sleef_funs_fx8);
-    merge_into_set(af_funs_dx8);
-    merge_into_set(sctl_funs_dx8);
-    merge_into_set(sleef_funs_dx8);
-    merge_into_set(sleef_funs_fx16);
 #undef merge_into_set
 
     std::set<std::string> keys_to_eval;
@@ -403,36 +364,36 @@ int main(int argc, char *argv[]) {
         Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(n_eval) + std::complex<double>{1.0, 1.0});
 
         for (auto key : keys_to_eval) {
-            std::cout << test_func(key, "boost_fx1", boost_funs_fx1, params, fvals, n_repeat);
-            std::cout << test_func(key, "stl_fx1", stl_funs_fx1, params, fvals, n_repeat);
             std::cout << test_func(key, "amdlibm_fx1", amdlibm_funs_fx1, params, fvals, n_repeat);
             std::cout << test_func(key, "amdlibm_fx8", amdlibm_funs_fx8, params, fvals, n_repeat);
+            std::cout << test_func(key, "agnerfog_fx8", af_funs_fx8, params, fvals, n_repeat);
+            std::cout << test_func(key, "agnerfog_fx16", af_funs_fx16, params, fvals, n_repeat);
+            std::cout << test_func(key, "boost_fx1", boost_funs_fx1, params, fvals, n_repeat);
+            std::cout << test_func(key, "eigen_fxx", eigen_funs, params, fvals, n_repeat);
             std::cout << test_func(key, "sleef_fx1", sleef_funs_fx1, params, fvals, n_repeat);
             std::cout << test_func(key, "sleef_fx8", sleef_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "af_fx8", af_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "sctl_fx8", sctl_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "eigen_fxx", eigen_funs, params, fvals, n_repeat);
-            std::cout << test_func(key, "agnerfog_fx16", af_funs_fx16, params, fvals, n_repeat);
-            std::cout << test_func(key, "sctl_fx16", sctl_funs_fx16, params, fvals, n_repeat);
             std::cout << test_func(key, "sleef_fx16", sleef_funs_fx16, params, fvals, n_repeat);
+            std::cout << test_func(key, "sctl_fx8", sctl_funs_fx8, params, fvals, n_repeat);
+            std::cout << test_func(key, "sctl_fx16", sctl_funs_fx16, params, fvals, n_repeat);
+            std::cout << test_func(key, "stl_fx1", stl_funs_fx1, params, fvals, n_repeat);
 
-            std::cout << test_func(key, "stl_dx1", stl_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "fort_dx1", fort_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "amdlibm_dx1", amdlibm_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "boost_dx1", boost_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "gsl_dx1", gsl_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "gsl_cdx1", gsl_complex_funs, params, cvals, n_repeat);
-            std::cout << test_func(key, "sleef_dx1", sleef_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "misc_dx1", misc_funs, params, cvals, n_repeat);
-            std::cout << test_func(key, "baobzi_dx1", baobzi_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "eigen_dxx", eigen_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, n_repeat);
             std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, n_repeat);
-            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, n_repeat);
-            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, n_repeat);
             std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, n_repeat);
+            std::cout << test_func(key, "amdlibm_dx1", amdlibm_funs_dx1, params, vals, n_repeat);
+            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, n_repeat);
+            std::cout << test_func(key, "baobzi_dx1", baobzi_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "boost_dx1", boost_funs_dx1, params, vals, n_repeat);
+            std::cout << test_func(key, "eigen_dxx", eigen_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "fort_dx1", fort_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "gsl_cdx1", gsl_complex_funs, params, cvals, n_repeat);
+            std::cout << test_func(key, "gsl_dx1", gsl_funs, params, vals, n_repeat);
+            std::cout << test_func(key, "misc_cdx1_x2", misc_funs_cdx1_x2, params, cvals, n_repeat);
+            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, n_repeat);
             std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, n_repeat);
+            std::cout << test_func(key, "sleef_dx1", sleef_funs_dx1, params, vals, n_repeat);
+            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, n_repeat);
             std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, n_repeat);
+            std::cout << test_func(key, "stl_dx1", stl_funs_dx1, params, vals, n_repeat);
 
             std::cout << "\n";
         }

@@ -26,37 +26,6 @@ void fort_bessel_yn_(int *, double *, double *);
 #include <sf_eval.hpp>
 
 namespace sf::functions {
-namespace amd {
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
-} // namespace amd
-
-namespace gsl {
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
-std::unordered_map<std::string, multi_eval_func<cdouble>> &get_funs_cdx1();
-} // namespace gsl
-
-namespace boost {
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
-} // namespace boost
-
-namespace stl {
-std::unordered_map<::std::string, multi_eval_func<float>> &get_funs_fx1();
-std::unordered_map<::std::string, multi_eval_func<double>> &get_funs_dx1();
-} // namespace stl
-
-namespace sleef {
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
-} // namespace sleef
-
 namespace af {
 std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
@@ -64,12 +33,17 @@ std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
 } // namespace af
 
-namespace SCTL {
+namespace amd {
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
 std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
-std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
-std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
-} // namespace SCTL
+} // namespace amd
+
+namespace boost {
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
+} // namespace boost
 
 // https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
 namespace eigen {
@@ -102,6 +76,40 @@ enum OPS {
 
 std::unordered_map<std::string, OPS> &get_funs();
 } // namespace eigen
+
+namespace fort {
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
+} // namespace fort
+
+namespace gsl {
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
+std::unordered_map<std::string, multi_eval_func<cdouble>> &get_funs_cdx1();
+} // namespace gsl
+
+namespace misc {
+std::unordered_map<std::string, fun_cdx1_x2> &get_funs_cdx1_x2();
+} // namespace misc
+
+namespace SCTL {
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
+} // namespace SCTL
+
+namespace sleef {
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16();
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
+} // namespace sleef
+
+namespace stl {
+std::unordered_map<::std::string, multi_eval_func<float>> &get_funs_fx1();
+std::unordered_map<::std::string, multi_eval_func<double>> &get_funs_dx1();
+} // namespace stl
 
 } // namespace sf::functions
 
