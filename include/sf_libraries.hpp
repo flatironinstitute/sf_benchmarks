@@ -32,6 +32,13 @@ std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
 } // namespace amd
+
+namespace gsl {
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
+std::unordered_map<std::string, multi_eval_func<cdouble>> &get_funs_cdx1();
+} // namespace gsl
+
+
 } // namespace sf::functions
 
 #endif
