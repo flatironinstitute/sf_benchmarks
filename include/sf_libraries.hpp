@@ -1,6 +1,12 @@
 #ifndef SF_LIBRARIES_HPP
 #define SF_LIBRARIES_HPP
 
+extern "C" {
+void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
+void fort_bessel_jn_(int *, double *, double *);
+void fort_bessel_yn_(int *, double *, double *);
+}
+
 #include <Eigen/Core>
 #include <baobzi.hpp>
 #include <boost/math/special_functions.hpp>

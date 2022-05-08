@@ -5,6 +5,29 @@
 
 namespace sf::utils {
 
+struct toolchain_info_t {
+    std::string compiler;
+    std::string compilervers;
+    std::string libcvers;
+
+    toolchain_info_t();
+};
+
+struct host_info_t {
+    std::string cpu_name;
+    std::string L1d;
+    std::string L1i;
+    std::string L2;
+    std::string L3;
+
+    host_info_t();
+};
+
+struct library_info_t {
+    std::string name;
+    std::string version;
+};
+
 std::string exec(const char *cmd);
 std::string get_alm_version();
 std::string get_sleef_version();

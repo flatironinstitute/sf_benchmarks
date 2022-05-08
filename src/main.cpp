@@ -26,53 +26,15 @@
 #include <dlfcn.h>
 #include <time.h>
 
-struct toolchain_info_t {
-    std::string compiler;
-    std::string compilervers;
-    std::string libcvers;
-
-    toolchain_info_t() {
-#ifdef __GNUC__
-        compiler = "gcc";
-        compilervers =
-            std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__) + "." + std::to_string(__GNUC_PATCHLEVEL__);
-#endif
-
-        libcvers = gnu_get_libc_version();
-    }
-};
-
-struct host_info_t {
-    std::string cpu_name;
-    std::string L1d;
-    std::string L1i;
-    std::string L2;
-    std::string L3;
-
-    host_info_t() {
-        using sf::utils::exec;
-        cpu_name = exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3");
-        L1d = exec("lscpu | grep L1d | awk '{print $3}'");
-        L1i = exec("lscpu | grep L1i | awk '{print $3}'");
-        L2 = exec("lscpu | grep L2 | awk '{print $3}'");
-        L3 = exec("lscpu | grep L3 | awk '{print $3}'");
-    }
-};
-
-struct library_info_t {
-    std::string name;
-    std::string version;
-};
-
-const host_info_t host_info;
-const library_info_t libraries_info[] = {
+const sf::utils::host_info_t host_info;
+const sf::utils::library_info_t libraries_info[] = {
     {"sctl", sf::utils::get_sctl_version()},   {"baobzi", sf::utils::get_baobzi_version()},
     {"boost", sf::utils::get_boost_version()}, {"amdlibm", sf::utils::get_alm_version()},
     {"sleef", sf::utils::get_sleef_version()}, {"gsl", sf::utils::get_gsl_version()},
     {"agnerfog", sf::utils::get_af_version()}, {"baobzi", sf::utils::get_baobzi_version()},
     {"eigen", sf::utils::get_eigen_version()}, {"misc", "NA"},
 };
-const toolchain_info_t toolchain_info;
+const sf::utils::toolchain_info_t toolchain_info;
 
 struct timespec get_wtime() {
     struct timespec ts;
@@ -132,12 +94,6 @@ std::function<void(const VAL_T *, VAL_T *, size_t)> scalar_func_apply(const F &f
             res[i] = f(vals[i]);
     };
     return fn;
-}
-
-extern "C" {
-void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
-void fort_bessel_jn_(int *, double *, double *);
-void fort_bessel_yn_(int *, double *, double *);
 }
 
 template <typename VAL_T>
