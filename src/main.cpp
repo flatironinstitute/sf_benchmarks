@@ -24,7 +24,6 @@
 #include <sqlite3.h>
 
 #include <dlfcn.h>
-#include <time.h>
 
 const sf::utils::host_info_t host_info;
 const sf::utils::library_info_t libraries_info[] = {
@@ -35,16 +34,6 @@ const sf::utils::library_info_t libraries_info[] = {
     {"eigen", sf::utils::get_eigen_version()}, {"misc", "NA"},
 };
 const sf::utils::toolchain_info_t toolchain_info;
-
-struct timespec get_wtime() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts;
-}
-
-double get_wtime_diff(const struct timespec *ts, const struct timespec *tf) {
-    return (tf->tv_sec - ts->tv_sec) + (tf->tv_nsec - ts->tv_nsec) * 1E-9;
-}
 
 class Params {
   public:
@@ -162,7 +151,7 @@ test_func(const std::string name, const std::string library_prefix, const std::u
 
     const FUN_T &f = funs.at(name);
 
-    const struct timespec st = get_wtime();
+    sf::utils::timer timer;
     for (long k = 0; k < Nrepeat; k++) {
         if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
             for (std::size_t i = 0; i < vals.size(); ++i) {
@@ -174,9 +163,9 @@ test_func(const std::string name, const std::string library_prefix, const std::u
             f(vals.data(), resptr, vals.size());
         }
     }
-    const struct timespec ft = get_wtime();
+    timer.stop();
 
-    res.eval_time = get_wtime_diff(&st, &ft);
+    res.eval_time = timer.elapsed();
 
     return res;
 }
@@ -234,8 +223,8 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
     Eigen::VectorX<VAL_T> &res_eigen = res.res;
 
     OPS::OPS OP = funs.at(name);
-    const struct timespec st = get_wtime();
 
+    sf::utils::timer timer;
     for (long k = 0; k < Nrepeat; k++)
         switch (OP) {
             EIGEN_CASE(cos)
@@ -270,8 +259,8 @@ BenchResult<VAL_T> test_func(const std::string name, const std::string library_p
         }
         }
 
-    const struct timespec ft = get_wtime();
-    res.eval_time = get_wtime_diff(&st, &ft);
+    timer.stop();
+    res.eval_time = timer.elapsed();
 
     return res;
 }

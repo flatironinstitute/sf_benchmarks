@@ -1,6 +1,7 @@
 #ifndef SF_UTILS_HPP
 #define SF_UTILS_HPP
 
+#include <ctime>
 #include <string>
 
 namespace sf::utils {
@@ -26,6 +27,16 @@ struct host_info_t {
 struct library_info_t {
     std::string name;
     std::string version;
+};
+
+struct timer {
+    struct timespec ts;
+    struct timespec tf;
+
+    timer() { start(); }
+    void start() { clock_gettime(CLOCK_MONOTONIC, &ts); }
+    void stop() { clock_gettime(CLOCK_MONOTONIC, &tf); }
+    double elapsed() { return (tf.tv_sec - ts.tv_sec) + (tf.tv_nsec - ts.tv_nsec) * 1E-9; }
 };
 
 std::string exec(const char *cmd);
