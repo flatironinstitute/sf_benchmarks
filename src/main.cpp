@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include <sf_benchmarks.hpp>
 #include <sf_libraries.hpp>
 #include <sf_utils.hpp>
 
@@ -24,11 +25,6 @@ const sf::utils::library_info_t libraries_info[] = {
     {"sleef", sf::utils::get_sleef_version()},
 };
 const sf::utils::toolchain_info_t toolchain_info;
-
-class Params {
-  public:
-    std::pair<double, double> domain{0.0, 1.0};
-};
 
 template <typename VAL_T>
 class BenchResult {
@@ -157,25 +153,6 @@ std::set<std::string> parse_args(int argc, char *argv[]) {
         res.insert(argv[i]);
 
     return res;
-}
-
-double baobzi_fun_wrapper(const double *x, const void *data) {
-    auto *myfun = (std::function<double(double)> *)data;
-    return (*myfun)(*x);
-}
-
-std::shared_ptr<baobzi::Baobzi> create_baobzi_func(void *infun, const std::pair<double, double> &domain) {
-    baobzi_input_t input = {.func = baobzi_fun_wrapper,
-                            .data = infun,
-                            .dim = 1,
-                            .order = 8,
-                            .tol = 1E-10,
-                            .minimum_leaf_fraction = 0.6,
-                            .split_multi_eval = 0};
-    double hl = 0.5 * (domain.second - domain.first);
-    double center = domain.first + hl;
-
-    return std::shared_ptr<baobzi::Baobzi>(new baobzi::Baobzi(&input, &center, &hl));
 }
 
 class Database {
@@ -320,29 +297,7 @@ int main(int argc, char *argv[]) {
     else
         keys_to_eval = fun_union;
 
-    std::unordered_map<std::string, std::shared_ptr<baobzi::Baobzi>> baobzi_funs;
-    std::unordered_map<std::string, std::function<double(double)>> potential_baobzi_funs{
-        {"bessel_Y0", [](double x) -> double { return gsl_sf_bessel_Y0(x); }},
-        {"bessel_Y1", [](double x) -> double { return gsl_sf_bessel_Y1(x); }},
-        {"bessel_Y2", [](double x) -> double { return gsl_sf_bessel_Yn(2, x); }},
-        {"bessel_I0", [](double x) -> double { return gsl_sf_bessel_I0(x); }},
-        {"bessel_I1", [](double x) -> double { return gsl_sf_bessel_I1(x); }},
-        {"bessel_I2", [](double x) -> double { return gsl_sf_bessel_In(2, x); }},
-        {"bessel_J0", [](double x) -> double { return gsl_sf_bessel_J0(x); }},
-        {"bessel_J1", [](double x) -> double { return gsl_sf_bessel_J1(x); }},
-        {"bessel_J2", [](double x) -> double { return gsl_sf_bessel_Jn(2, x); }},
-        {"hermite_0", [](double x) -> double { return gsl_sf_hermite(0, x); }},
-        {"hermite_1", [](double x) -> double { return gsl_sf_hermite(1, x); }},
-        {"hermite_2", [](double x) -> double { return gsl_sf_hermite(2, x); }},
-        {"hermite_3", [](double x) -> double { return gsl_sf_hermite(3, x); }},
-    };
-
-    for (auto &key : keys_to_eval) {
-        if (potential_baobzi_funs.count(key)) {
-            std::cerr << "Creating baobzi function '" + key + "'.\n";
-            baobzi_funs[key] = create_baobzi_func((void *)(&potential_baobzi_funs.at(key)), params[key].domain);
-        }
-    }
+    auto &baobzi_funs = sf::functions::baobzi::get_funs_dx1(keys_to_eval, params);
 
     std::vector<std::pair<int, int>> run_sets;
     for (uint8_t shift = 0; shift <= 14; shift += 2)

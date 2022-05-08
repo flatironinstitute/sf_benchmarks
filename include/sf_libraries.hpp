@@ -1,11 +1,7 @@
 #ifndef SF_LIBRARIES_HPP
 #define SF_LIBRARIES_HPP
 
-extern "C" {
-void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
-void fort_bessel_jn_(int *, double *, double *);
-void fort_bessel_yn_(int *, double *, double *);
-}
+#include <sf_benchmarks.hpp>
 
 #include <Eigen/Core>
 #include <baobzi.hpp>
@@ -23,7 +19,12 @@ void fort_bessel_yn_(int *, double *, double *);
 #include <gnu/libc-version.h>
 #include <gsl/gsl_version.h>
 
-#include <sf_eval.hpp>
+
+extern "C" {
+void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);
+void fort_bessel_jn_(int *, double *, double *);
+void fort_bessel_yn_(int *, double *, double *);
+}
 
 namespace sf::functions {
 namespace af {
@@ -39,6 +40,11 @@ std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
 } // namespace amd
+
+namespace baobzi {
+std::unordered_map<std::string, std::shared_ptr<::baobzi::Baobzi>> &
+get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string, Params> &params);
+}
 
 namespace boost {
 std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();

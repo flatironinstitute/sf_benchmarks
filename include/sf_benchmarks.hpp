@@ -1,5 +1,5 @@
-#ifndef SF_EVAL_HPP
-#define SF_EVAL_HPP
+#ifndef SF_BENCHMARKS_HPP
+#define SF_BENCHMARKS_HPP
 
 #include <complex>
 #include <functional>
@@ -50,5 +50,11 @@ std::function<void(const VAL_T *, VAL_T *, size_t)> scalar_func_apply(const F &f
     };
     return fn;
 }
+
+class Params {
+  public:
+    std::pair<double, double> domain{0.0, 1.0};
+};
+
 
 #endif
