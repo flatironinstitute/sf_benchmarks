@@ -13,11 +13,15 @@
 
 const sf::utils::host_info_t host_info;
 const sf::utils::library_info_t libraries_info[] = {
-    {"sctl", sf::utils::get_sctl_version()},   {"baobzi", sf::utils::get_baobzi_version()},
-    {"boost", sf::utils::get_boost_version()}, {"amdlibm", sf::utils::get_alm_version()},
-    {"sleef", sf::utils::get_sleef_version()}, {"gsl", sf::utils::get_gsl_version()},
-    {"agnerfog", sf::utils::get_af_version()}, {"baobzi", sf::utils::get_baobzi_version()},
-    {"eigen", sf::utils::get_eigen_version()}, {"misc", "NA"},
+    {"agnerfog", sf::utils::get_af_version()},
+    {"amdlibm", sf::utils::get_alm_version()},
+    {"baobzi", sf::utils::get_baobzi_version()},
+    {"boost", sf::utils::get_boost_version()},
+    {"eigen", sf::utils::get_eigen_version()},
+    {"gsl", sf::utils::get_gsl_version()},
+    {"misc", "NA"},
+    {"sctl", sf::utils::get_sctl_version()},
+    {"sleef", sf::utils::get_sleef_version()},
 };
 const sf::utils::toolchain_info_t toolchain_info;
 
@@ -247,12 +251,12 @@ int main(int argc, char *argv[]) {
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
     std::unordered_map<std::string, Params> params = {
-        {"sin_pi", {.domain{0.0, 2.0}}},     {"cos_pi", {.domain{0.0, 2.0}}},     {"sin", {.domain{0.0, 2 * M_PI}}},
-        {"cos", {.domain{0.0, 2 * M_PI}}},   {"tan", {.domain{0.0, 2 * M_PI}}},   {"asin", {.domain{-1.0, 1.0}}},
-        {"acos", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}},  {"erf", {.domain{-1.0, 1.0}}},
-        {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},     {"log", {.domain{0.0, 10.0}}},
-        {"asinh", {.domain{-100.0, 100.0}}}, {"acosh", {.domain{1.0, 1000.0}}},   {"atanh", {.domain{-1.0, 1.0}}},
+        {"acos", {.domain{-1.0, 1.0}}},      {"asin", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}},
+        {"acosh", {.domain{1.0, 1000.0}}},   {"asinh", {.domain{-100.0, 100.0}}}, {"atanh", {.domain{-1.0, 1.0}}},
         {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}}, {"bessel_Y2", {.domain{0.1, 30.0}}},
+        {"cos_pi", {.domain{0.0, 2.0}}},     {"sin_pi", {.domain{0.0, 2.0}}},     {"cos", {.domain{0.0, 2 * M_PI}}},
+        {"sin", {.domain{0.0, 2 * M_PI}}},   {"tan", {.domain{0.0, 2 * M_PI}}},   {"erf", {.domain{-1.0, 1.0}}},
+        {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},     {"log", {.domain{0.0, 10.0}}},
     };
 
     auto &af_funs_dx4 = sf::functions::af::get_funs_dx4();
