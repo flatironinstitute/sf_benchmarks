@@ -1,0 +1,202 @@
+#include <dlfcn.h>
+#include <string>
+#include <unordered_map>
+
+#include <sf_libraries.hpp>
+
+namespace sf::functions::sleef {
+
+std::unordered_map<std::string, multi_eval_func<float>> funs_fx1 = {
+    {"sin_pi", scalar_func_apply<float>([](float x) -> float { return Sleef_sinpif1_u05purecfma(x); })},
+    {"cos_pi", scalar_func_apply<float>([](float x) -> float { return Sleef_cospif1_u05purecfma(x); })},
+    {"sin", scalar_func_apply<float>([](float x) -> float { return Sleef_sinf1_u10purecfma(x); })},
+    {"cos", scalar_func_apply<float>([](float x) -> float { return Sleef_cosf1_u10purecfma(x); })},
+    {"tan", scalar_func_apply<float>([](float x) -> float { return Sleef_tanf1_u10purecfma(x); })},
+    {"sinh", scalar_func_apply<float>([](float x) -> float { return Sleef_sinhf1_u10purecfma(x); })},
+    {"cosh", scalar_func_apply<float>([](float x) -> float { return Sleef_coshf1_u10purecfma(x); })},
+    {"tanh", scalar_func_apply<float>([](float x) -> float { return Sleef_tanhf1_u10purecfma(x); })},
+    {"asin", scalar_func_apply<float>([](float x) -> float { return Sleef_asinf1_u10purecfma(x); })},
+    {"acos", scalar_func_apply<float>([](float x) -> float { return Sleef_acosf1_u10purecfma(x); })},
+    {"atan", scalar_func_apply<float>([](float x) -> float { return Sleef_atanf1_u10purecfma(x); })},
+    {"asinh", scalar_func_apply<float>([](float x) -> float { return Sleef_asinhf1_u10purecfma(x); })},
+    {"acosh", scalar_func_apply<float>([](float x) -> float { return Sleef_acoshf1_u10purecfma(x); })},
+    {"atanh", scalar_func_apply<float>([](float x) -> float { return Sleef_atanhf1_u10purecfma(x); })},
+    {"log", scalar_func_apply<float>([](float x) -> float { return Sleef_logf1_u10purecfma(x); })},
+    {"log2", scalar_func_apply<float>([](float x) -> float { return Sleef_log2f1_u10purecfma(x); })},
+    {"log10", scalar_func_apply<float>([](float x) -> float { return Sleef_log10f1_u10purecfma(x); })},
+    {"exp", scalar_func_apply<float>([](float x) -> float { return Sleef_expf1_u10purecfma(x); })},
+    {"exp2", scalar_func_apply<float>([](float x) -> float { return Sleef_exp2f1_u10purecfma(x); })},
+    {"exp10", scalar_func_apply<float>([](float x) -> float { return Sleef_exp10f1_u10purecfma(x); })},
+    {"erf", scalar_func_apply<float>([](float x) -> float { return Sleef_erff1_u10purecfma(x); })},
+    {"erfc", scalar_func_apply<float>([](float x) -> float { return Sleef_erfcf1_u15purecfma(x); })},
+    {"lgamma", scalar_func_apply<float>([](float x) -> float { return Sleef_lgammaf1_u10purecfma(x); })},
+    {"tgamma", scalar_func_apply<float>([](float x) -> float { return Sleef_tgammaf1_u10purecfma(x); })},
+    {"sqrt", scalar_func_apply<float>([](float x) -> float { return Sleef_sqrtf1_u05purecfma(x); })},
+    {"pow3.5", scalar_func_apply<float>([](float x) -> float { return Sleef_powf1_u10purecfma(x, 3.5); })},
+    {"pow13", scalar_func_apply<float>([](float x) -> float { return Sleef_powf1_u10purecfma(x, 13); })},
+};
+
+std::unordered_map<std::string, multi_eval_func<double>> funs_dx1 = {
+    {"sin_pi", scalar_func_apply<double>([](double x) -> double { return Sleef_sinpid1_u05purecfma(x); })},
+    {"cos_pi", scalar_func_apply<double>([](double x) -> double { return Sleef_cospid1_u05purecfma(x); })},
+    {"sin", scalar_func_apply<double>([](double x) -> double { return Sleef_sind1_u10purecfma(x); })},
+    {"cos", scalar_func_apply<double>([](double x) -> double { return Sleef_cosd1_u10purecfma(x); })},
+    {"tan", scalar_func_apply<double>([](double x) -> double { return Sleef_tand1_u10purecfma(x); })},
+    {"sinh", scalar_func_apply<double>([](double x) -> double { return Sleef_sinhd1_u10purecfma(x); })},
+    {"cosh", scalar_func_apply<double>([](double x) -> double { return Sleef_coshd1_u10purecfma(x); })},
+    {"tanh", scalar_func_apply<double>([](double x) -> double { return Sleef_tanhd1_u10purecfma(x); })},
+    {"asin", scalar_func_apply<double>([](double x) -> double { return Sleef_asind1_u10purecfma(x); })},
+    {"acos", scalar_func_apply<double>([](double x) -> double { return Sleef_acosd1_u10purecfma(x); })},
+    {"atan", scalar_func_apply<double>([](double x) -> double { return Sleef_atand1_u10purecfma(x); })},
+    {"asinh", scalar_func_apply<double>([](double x) -> double { return Sleef_asinhd1_u10purecfma(x); })},
+    {"acosh", scalar_func_apply<double>([](double x) -> double { return Sleef_acoshd1_u10purecfma(x); })},
+    {"atanh", scalar_func_apply<double>([](double x) -> double { return Sleef_atanhd1_u10purecfma(x); })},
+    {"log", scalar_func_apply<double>([](double x) -> double { return Sleef_logd1_u10purecfma(x); })},
+    {"log2", scalar_func_apply<double>([](double x) -> double { return Sleef_log2d1_u10purecfma(x); })},
+    {"log10", scalar_func_apply<double>([](double x) -> double { return Sleef_log10d1_u10purecfma(x); })},
+    {"exp", scalar_func_apply<double>([](double x) -> double { return Sleef_expd1_u10purecfma(x); })},
+    {"exp2", scalar_func_apply<double>([](double x) -> double { return Sleef_exp2d1_u10purecfma(x); })},
+    {"exp10", scalar_func_apply<double>([](double x) -> double { return Sleef_exp10d1_u10purecfma(x); })},
+    {"erf", scalar_func_apply<double>([](double x) -> double { return Sleef_erfd1_u10purecfma(x); })},
+    {"erfc", scalar_func_apply<double>([](double x) -> double { return Sleef_erfcd1_u15purecfma(x); })},
+    {"lgamma", scalar_func_apply<double>([](double x) -> double { return Sleef_lgammad1_u10purecfma(x); })},
+    {"tgamma", scalar_func_apply<double>([](double x) -> double { return Sleef_tgammad1_u10purecfma(x); })},
+    {"sqrt", scalar_func_apply<double>([](double x) -> double { return Sleef_sqrtd1_u05purecfma(x); })},
+    {"pow3.5", scalar_func_apply<double>([](double x) -> double { return Sleef_powd1_u10purecfma(x, 3.5); })},
+    {"pow13", scalar_func_apply<double>([](double x) -> double { return Sleef_powd1_u10purecfma(x, 13); })},
+};
+
+std::unordered_map<std::string, multi_eval_func<float>> funs_fx8 = {
+    {"sin_pi", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_sinpif8_u05avx2(x); })},
+    {"cos_pi", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_cospif8_u05avx2(x); })},
+    {"sin", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_sinf8_u10avx2(x); })},
+    {"cos", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_cosf8_u10avx2(x); })},
+    {"tan", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_tanf8_u10avx2(x); })},
+    {"sinh", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_sinhf8_u10avx2(x); })},
+    {"cosh", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_coshf8_u10avx2(x); })},
+    {"tanh", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_tanhf8_u10avx2(x); })},
+    {"asin", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_asinf8_u10avx2(x); })},
+    {"acos", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_acosf8_u10avx2(x); })},
+    {"atan", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_atanf8_u10avx2(x); })},
+    {"asinh", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_asinhf8_u10avx2(x); })},
+    {"acosh", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_acoshf8_u10avx2(x); })},
+    {"atanh", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_atanhf8_u10avx2(x); })},
+    {"log", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_logf8_u10avx2(x); })},
+    {"log2", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_log2f8_u10avx2(x); })},
+    {"log10", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_log10f8_u10avx2(x); })},
+    {"exp", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_expf8_u10avx2(x); })},
+    {"exp2", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_exp2f8_u10avx2(x); })},
+    {"exp10", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_exp10f8_u10avx2(x); })},
+    {"erf", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_erff8_u10avx2(x); })},
+    {"erfc", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_erfcf8_u15avx2(x); })},
+    {"lgamma", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_lgammaf8_u10avx2(x); })},
+    {"tlgamma", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_tgammaf8_u10avx2(x); })},
+    {"sqrt", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_sqrtf8_u05avx2(x); })},
+    {"pow3.5", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_powf8_u10avx2(x, Vec8f{3.5}); })},
+    {"pow13", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return Sleef_powf8_u10avx2(x, Vec8f{13}); })},
+};
+
+std::unordered_map<std::string, multi_eval_func<double>> funs_dx4 = {
+    {"sin_pi", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sinpid4_u05avx2(x); })},
+    {"cos_pi", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_cospid4_u05avx2(x); })},
+    {"sin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sind4_u10avx2(x); })},
+    {"cos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_cosd4_u10avx2(x); })},
+    {"tan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_tand4_u10avx2(x); })},
+    {"sinh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sinhd4_u10avx2(x); })},
+    {"cosh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_coshd4_u10avx2(x); })},
+    {"tanh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_tanhd4_u10avx2(x); })},
+    {"asin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_asind4_u10avx2(x); })},
+    {"acos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_acosd4_u10avx2(x); })},
+    {"atan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_atand4_u10avx2(x); })},
+    {"asinh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_asinhd4_u10avx2(x); })},
+    {"acosh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_acoshd4_u10avx2(x); })},
+    {"atanh", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_atanhd4_u10avx2(x); })},
+    {"log", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_logd4_u10avx2(x); })},
+    {"log2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_log2d4_u10avx2(x); })},
+    {"log10", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_log10d4_u10avx2(x); })},
+    {"exp", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_expd4_u10avx2(x); })},
+    {"exp2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_exp2d4_u10avx2(x); })},
+    {"exp10", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_exp10d4_u10avx2(x); })},
+    {"erf", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_erfd4_u10avx2(x); })},
+    {"erfc", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_erfcd4_u15avx2(x); })},
+    {"lgamma", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_lgammad4_u10avx2(x); })},
+    {"tlgamma", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_tgammad4_u10avx2(x); })},
+    {"sqrt", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_sqrtd4_u05avx2(x); })},
+    {"pow3.5", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_powd4_u10avx2(x, Vec4d{3.5}); })},
+    {"pow13", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_powd4_u10avx2(x, Vec4d{13}); })},
+};
+
+#ifdef _AVX512F_
+std::unordered_map<std::string, multi_eval_func<float>> funs_fx16 = {
+    {"sin_pi", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_sinpif16_u05avx512f(x); })},
+    {"cos_pi", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_cospif16_u05avx512f(x); })},
+    {"sin", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_sinf16_u10avx512f(x); })},
+    {"cos", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_cosf16_u10avx512f(x); })},
+    {"tan", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_tanf16_u10avx512f(x); })},
+    {"sinh", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_sinhf16_u10avx512f(x); })},
+    {"cosh", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_coshf16_u10avx512f(x); })},
+    {"tanh", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_tanhf16_u10avx512f(x); })},
+    {"asin", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_asinf16_u10avx512f(x); })},
+    {"acos", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_acosf16_u10avx512f(x); })},
+    {"atan", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_atanf16_u10avx512f(x); })},
+    {"asinh", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_asinhf16_u10avx512f(x); })},
+    {"acosh", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_acoshf16_u10avx512f(x); })},
+    {"atanh", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_atanhf16_u10avx512f(x); })},
+    {"log", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_logf16_u10avx512f(x); })},
+    {"log2", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_log2f16_u10avx512f(x); })},
+    {"log10", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_log10f16_u10avx512f(x); })},
+    {"exp", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_expf16_u10avx512f(x); })},
+    {"exp2", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_exp2f16_u10avx512f(x); })},
+    {"exp10", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_exp10f16_u10avx512f(x); })},
+    {"erf", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_erff16_u10avx512f(x); })},
+    {"erfc", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_erfcf16_u15avx512f(x); })},
+    {"lgamma", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_lgammaf16_u10avx512f(x); })},
+    {"tlgamma", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_tgammaf16_u10avx512f(x); })},
+    {"sqrt", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_sqrtf16_u05avx512f(x); })},
+    {"pow3.5",
+     vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_powf16_u10avx512f(x, Vec16f{3.5}); })},
+    {"pow13", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_powf16_u10avx512f(x, Vec16f{13}); })},
+};
+
+std::unordered_map<std::string, multi_eval_func<double>> funs_dx8 = {
+    {"sin_pi", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sinpid8_u05avx512f(x); })},
+    {"cos_pi", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_cospid8_u05avx512f(x); })},
+    {"sin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sind8_u10avx512f(x); })},
+    {"cos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_cosd8_u10avx512f(x); })},
+    {"tan", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_tand8_u10avx512f(x); })},
+    {"sinh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sinhd8_u10avx512f(x); })},
+    {"cosh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_coshd8_u10avx512f(x); })},
+    {"tanh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_tanhd8_u10avx512f(x); })},
+    {"asin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_asind8_u10avx512f(x); })},
+    {"acos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_acosd8_u10avx512f(x); })},
+    {"atan", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_atand8_u10avx512f(x); })},
+    {"asinh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_asinhd8_u10avx512f(x); })},
+    {"acosh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_acoshd8_u10avx512f(x); })},
+    {"atanh", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_atanhd8_u10avx512f(x); })},
+    {"log", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_logd8_u10avx512f(x); })},
+    {"log2", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_log2d8_u10avx512f(x); })},
+    {"log10", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_log10d8_u10avx512f(x); })},
+    {"exp", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_expd8_u10avx512f(x); })},
+    {"exp2", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_exp2d8_u10avx512f(x); })},
+    {"exp10", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_exp10d8_u10avx512f(x); })},
+    {"erf", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_erfd8_u10avx512f(x); })},
+    {"erfc", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_erfcd8_u15avx512f(x); })},
+    {"lgamma", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_lgammad8_u10avx512f(x); })},
+    {"tlgamma", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_tgammad8_u10avx512f(x); })},
+    {"sqrt", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_sqrtd8_u05avx512f(x); })},
+    {"pow3.5", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_powd8_u10avx512f(x, Vec8d{3.5}); })},
+    {"pow13", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Sleef_powd8_u10avx512f(x, Vec8d{13}); })},
+};
+#else
+std::unordered_map<std::string, multi_eval_func<float>> funs_fx16;
+std::unordered_map<std::string, multi_eval_func<double>> funs_dx8;
+#endif
+
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1() { return funs_fx1; }
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1() { return funs_dx1; }
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx8() { return funs_fx8; }
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4() { return funs_dx4; }
+std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx16() { return funs_fx16; }
+std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8() { return funs_dx8; }
+
+} // namespace sf::functions::sleef
