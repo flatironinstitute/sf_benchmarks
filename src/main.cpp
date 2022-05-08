@@ -1,19 +1,7 @@
-#include <algorithm>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
 #include <filesystem>
 #include <functional>
-#include <iomanip>
-#include <ios>
 #include <iostream>
 #include <set>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <toml.hpp>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -205,7 +193,7 @@ class Database {
     static std::string quote(const std::string &str) { return "\"" + str + "\""; }
     static int errcheck(char *err) {
         if (err != NULL) {
-            printf("%s\n", err);
+            std::cout << err << std::endl;
             sqlite3_free(err);
             return 1;
         }
