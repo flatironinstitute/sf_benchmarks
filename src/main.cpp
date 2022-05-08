@@ -341,7 +341,7 @@ int main(int argc, char *argv[]) {
          })},
     };
 
-    std::unordered_map<std::string, fun_cdx1_x2> hank10x_funs = {
+    std::unordered_map<std::string, fun_cdx1_x2> misc_funs = {
         {"hank103", [](cdouble z) -> std::pair<cdouble, cdouble> {
              cdouble h0, h1;
              int ifexpon = 1;
@@ -389,54 +389,36 @@ int main(int argc, char *argv[]) {
         {"digamma", OPS::digamma}, {"ndtri", OPS::ndtri},  {"sqrt", OPS::sqrt},   {"rsqrt", OPS::rsqrt},
     };
 
-    std::set<std::string> fun_union;
-    for (auto kv : amdlibm_funs_fx1)
-        fun_union.insert(kv.first);
-    for (auto kv : amdlibm_funs_dx1)
-        fun_union.insert(kv.first);
-    for (auto kv : boost_funs_fx1)
-        fun_union.insert(kv.first);
-    for (auto kv : boost_funs_dx1)
-        fun_union.insert(kv.first);
-    for (auto kv : eigen_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : fort_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : gsl_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : gsl_complex_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : hank10x_funs)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_fx1)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_dx1)
-        fun_union.insert(kv.first);
-    for (auto kv : stl_funs_fx1)
-        fun_union.insert(kv.first);
-    for (auto kv : stl_funs_dx1)
+#define merge_into_set(FUNS)                                                                                           \
+    for (auto kv : FUNS)                                                                                               \
         fun_union.insert(kv.first);
 
-    for (auto kv : af_funs_dx4)
-        fun_union.insert(kv.first);
-    for (auto kv : amdlibm_funs_dx4)
-        fun_union.insert(kv.first);
-    for (auto kv : amdlibm_funs_fx8)
-        fun_union.insert(kv.first);
-    for (auto kv : sctl_funs_dx4)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_dx4)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_fx8)
-        fun_union.insert(kv.first);
-    for (auto kv : af_funs_dx8)
-        fun_union.insert(kv.first);
-    for (auto kv : sctl_funs_dx8)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_dx8)
-        fun_union.insert(kv.first);
-    for (auto kv : sleef_funs_fx16)
-        fun_union.insert(kv.first);
+    std::set<std::string> fun_union;
+    merge_into_set(amdlibm_funs_fx1);
+    merge_into_set(amdlibm_funs_dx1);
+    merge_into_set(boost_funs_fx1);
+    merge_into_set(boost_funs_dx1);
+    merge_into_set(eigen_funs);
+    merge_into_set(fort_funs);
+    merge_into_set(gsl_funs);
+    merge_into_set(gsl_complex_funs);
+    merge_into_set(misc_funs);
+    merge_into_set(sleef_funs_fx1);
+    merge_into_set(sleef_funs_dx1);
+    merge_into_set(stl_funs_fx1);
+    merge_into_set(stl_funs_dx1);
+
+    merge_into_set(af_funs_dx4);
+    merge_into_set(amdlibm_funs_dx4);
+    merge_into_set(amdlibm_funs_fx8);
+    merge_into_set(sctl_funs_dx4);
+    merge_into_set(sleef_funs_dx4);
+    merge_into_set(sleef_funs_fx8);
+    merge_into_set(af_funs_dx8);
+    merge_into_set(sctl_funs_dx8);
+    merge_into_set(sleef_funs_dx8);
+    merge_into_set(sleef_funs_fx16);
+#undef merge_into_set
 
     std::set<std::string> keys_to_eval;
     if (input_keys.size() > 0)
@@ -501,7 +483,7 @@ int main(int argc, char *argv[]) {
             std::cout << test_func(key, "gsl_dx1", gsl_funs, params, vals, n_repeat);
             std::cout << test_func(key, "gsl_cdx1", gsl_complex_funs, params, cvals, n_repeat);
             std::cout << test_func(key, "sleef_dx1", sleef_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "hank10x_dx1", hank10x_funs, params, cvals, n_repeat);
+            std::cout << test_func(key, "misc_dx1", misc_funs, params, cvals, n_repeat);
             std::cout << test_func(key, "baobzi_dx1", baobzi_funs, params, vals, n_repeat);
             std::cout << test_func(key, "eigen_dxx", eigen_funs, params, vals, n_repeat);
             std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, n_repeat);
