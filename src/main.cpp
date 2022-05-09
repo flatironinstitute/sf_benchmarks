@@ -171,7 +171,6 @@ class Database {
 
     ~Database() { sqlite3_close(db_); }
 
-    static std::string quote(const std::string &str) { return "\"" + str + "\""; }
     static int errcheck(char *err) {
         if (err != NULL) {
             std::cout << err << std::endl;
@@ -181,11 +180,21 @@ class Database {
         return 0;
     }
 
+    static std::string join_args(std::initializer_list<std::string> list) {
+        auto quote = [](const std::string &str) { return "\"" + str + "\""; };
+        std::string res;
+        for (auto elem : list) {
+            res += quote(elem) + ",";
+        }
+        res.pop_back();
+        return res;
+    }
+
     bool update_host_info() {
         char *err = NULL;
         std::string sql = "INSERT OR IGNORE INTO hosts (cpuname,l1dcache,l1icache,l2cache,l3cache) VALUES(" +
-                          quote(host_info.cpu_name) + "," + quote(host_info.L1d) + "," + quote(host_info.L1i) + "," +
-                          quote(host_info.L2) + "," + quote(host_info.L3) + ");";
+                          join_args({host_info.cpu_name, host_info.L1d, host_info.L1i, host_info.L2, host_info.L3}) +
+                          ");";
         sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
         return errcheck(err);
     }
@@ -194,8 +203,8 @@ class Database {
         bool iserr = false;
         for (auto &library_info : libraries_info) {
             char *err = NULL;
-            std::string sql = "INSERT OR IGNORE INTO libraries (name,version) VALUES(" + quote(library_info.name) +
-                              "," + quote(library_info.version) + ");";
+            std::string sql = "INSERT OR IGNORE INTO libraries (name,version) VALUES(" +
+                              join_args({library_info.name, library_info.version}) + ");";
             sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
             if (errcheck(err))
                 iserr = true;
@@ -206,8 +215,8 @@ class Database {
     bool update_toolchain_info() {
         char *err = NULL;
         std::string sql = "INSERT OR IGNORE INTO toolchains (compiler,compilervers,libcvers) VALUES(" +
-                          quote(toolchain_info.compiler) + "," + quote(toolchain_info.compilervers) + "," +
-                          quote(toolchain_info.libcvers) + ");";
+                          join_args({toolchain_info.compiler, toolchain_info.compilervers, toolchain_info.libcvers}) +
+                          ");";
         sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
         return errcheck(err);
     }
