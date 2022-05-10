@@ -52,6 +52,7 @@ struct measurement_t {
     double meanevaltime = 0;
     double stddev = 0;
     double maxerr = 0;
+    double maxrelerr = 0;
 
     explicit operator bool() const { return nrepeat; }
     friend std::ostream &operator<<(std::ostream &, const measurement_t &);
@@ -82,14 +83,15 @@ std::ostream &operator<<(std::ostream &os, const measurement_t &meas) {
         break;                                                                                                         \
     }
 
-template <typename FUN_T, typename VAL_T>
+template <typename VAL_T, typename FUN_T>
 measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &library_info, configuration_t &config,
-                        const Eigen::VectorX<VAL_T> &x_in, int n_repeat) {
+                        const Eigen::Ref<const Eigen::VectorX<VAL_T>> &x_in, const Eigen::Ref<const Eigen::VectorXd> &y_ref, int n_repeat) {
     if (!f)
         return measurement_t();
     const std::string label = library_info.name + "_" + config.func;
 
-    Eigen::VectorX<VAL_T> x = sf::utils::transform_domain(x_in, config.lbound, config.ubound);
+    
+    Eigen::VectorX<VAL_T> x = sf::utils::transform_domain<VAL_T>(x_in, config.lbound, config.ubound);
 
     size_t res_size = x.size();
     size_t n_evals = x.size() * n_repeat;
@@ -159,6 +161,21 @@ measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &l
     meas.meanevaltime = timer.elapsed() / n_evals / 1E-9;
     meas.veclev = veclev;
 
+    if (y_ref.size() && (std::is_same_v<VAL_T, float> || std::is_same_v<VAL_T, double>)) {
+        Eigen::VectorXd delta = res.template cast<double>() - y_ref;
+        meas.maxerr = delta.array().abs().maxCoeff();
+        meas.maxrelerr = (delta.array().abs() / y_ref.array().abs()).maxCoeff();
+        meas.stddev = std::sqrt((delta.array() - delta.mean()).square().sum() / (delta.size() - 1));
+
+        meas.maxerr = std::isnan(meas.maxerr) ? -2.0 : meas.maxerr;
+        meas.maxrelerr = std::isnan(meas.maxrelerr) ? -2.0 : meas.maxrelerr;
+        meas.stddev = std::isnan(meas.stddev) ? -2.0 : meas.stddev;
+    } else {
+        meas.stddev = -1.0;
+        meas.maxerr = -1.0;
+        meas.maxrelerr = -1.0;
+    }
+
     return meas;
 }
 #undef EIGEN_CASE
@@ -212,7 +229,8 @@ inline auto init_storage(const std::string &path) {
             make_column("nrepeat", &measurement_t::nrepeat), make_column("veclev", &measurement_t::veclev),
             make_column("megaevalspersec", &measurement_t::megaevalspersec),
             make_column("meanevaltime", &measurement_t::meanevaltime), make_column("stddev", &measurement_t::stddev),
-            make_column("maxerr", &measurement_t::maxerr), foreign_key(&measurement_t::run).references(&run_t::id),
+            make_column("maxrelerr", &measurement_t::maxrelerr), make_column("maxerr", &measurement_t::maxerr),
+            foreign_key(&measurement_t::run).references(&run_t::id),
             foreign_key(&measurement_t::library).references(&library_info_t::id),
             foreign_key(&measurement_t::configuration).references(&configuration_t::id)));
 
@@ -326,30 +344,129 @@ int main(int argc, char *argv[]) {
         keys_to_eval = fun_union;
 
     std::vector<std::pair<int, int>> run_sets;
-    for (uint8_t shift = 0; shift <= 14; shift += 2)
+    for (uint8_t shift = 0; shift <= 14; shift += 14)
         run_sets.push_back({1 << (10 + shift), 1 << (14 - shift)});
 
     std::unordered_map<std::string, configuration_t> base_configurations = {
         {"acos", {.lbound = -1.0, .ubound = 1.0}},
-        {"asin", {.lbound = -1.0, .ubound = 1.0}},
-        {"atan", {.lbound = -100.0, .ubound = 100.0}},
         {"acosh", {.lbound = 1.0, .ubound = 1000.0}},
+        {"asin", {.lbound = -1.0, .ubound = 1.0}},
         {"asinh", {.lbound = -100.0, .ubound = 100.0}},
+        {"atan", {.lbound = -100.0, .ubound = 100.0}},
         {"atanh", {.lbound = -1.0, .ubound = 1.0}},
+        {"bessel_I0", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_I1", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_I2", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_J0", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_J1", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_J2", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_K0", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_K1", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_K2", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_Y0", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_Y1", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_Y2", {.lbound = 0.1, .ubound = 30.0}},
-        {"cos_pi", {.lbound = 0.0, .ubound = 2.0}},
-        {"sin_pi", {.lbound = 0.0, .ubound = 2.0}},
+        {"bessel_j0", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_j1", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_j2", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_y0", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_y1", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_y2", {.lbound = 0.1, .ubound = 30.0}},
+        {"copy", {.lbound = 0.0, .ubound = 1.0}},
         {"cos", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
-        {"sin", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
-        {"tan", {.lbound = 0.0, .ubound = 2 * M_PI}},
+        {"cos_pi", {.lbound = 0.0, .ubound = 2.0}},
+        {"cosh", {.lbound = 0.0, .ubound = 1.0}},
+        {"digamma", {.lbound = 0.0, .ubound = 1.0}},
         {"erf", {.lbound = -1.0, .ubound = 1.0}},
         {"erfc", {.lbound = -1.0, .ubound = 1.0}},
-        {"exp", {.lbound = -10.0, .ubound = 10.0}},
-        {"log", {.lbound = 0.0, .ubound = 10.0}},
+        {"exp", {.lbound = -1.0, .ubound = 1.0}},
+        {"exp10", {.lbound = -1.0, .ubound = 1.0}},
+        {"exp2", {.lbound = -1.0, .ubound = 1.0}},
         {"hank103", {.lbound = 0.0, .ubound = 10.0, .ilbound = 0.0, .iubound = 10.0}},
+        {"hermite_0", {.lbound = 0.0, .ubound = 10.0}},
+        {"hermite_1", {.lbound = 0.0, .ubound = 10.0}},
+        {"hermite_2", {.lbound = 0.0, .ubound = 10.0}},
+        {"hermite_3", {.lbound = 0.0, .ubound = 10.0}},
+        {"lgamma", {.lbound = 0.0, .ubound = 10.0}},
+        {"log", {.lbound = 0.0, .ubound = 10.0}},
+        {"log10", {.lbound = 0.0, .ubound = 10.0}},
+        {"log2", {.lbound = 0.0, .ubound = 10.0}},
+        {"ndtri", {.lbound = 0.0, .ubound = 1.0}},
+        {"pow13", {.lbound = 0.0, .ubound = 1.0}},
+        {"pow3.5", {.lbound = 0.0, .ubound = 1.0}},
+        {"riemann_zeta", {.lbound = 0.0, .ubound = 10.0}},
+        {"rsqrt", {.lbound = 0.0, .ubound = 10.0}},
+        {"sin", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
+        {"sin_pi", {.lbound = 0.0, .ubound = 2.0}},
+        {"sinc", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
+        {"sinc_pi", {.lbound = 0.0, .ubound = 2.0}},
+        {"sinh", {.lbound = 0.0, .ubound = 2.0}},
+        {"sqrt", {.lbound = 0.0, .ubound = 10.0}},
+        {"tan", {.lbound = 0.0, .ubound = 2 * M_PI}},
+        {"tanh", {.lbound = -1.0, .ubound = 1.0}},
+        {"tgamma", {.lbound = -0.0, .ubound = 1.0}},
     };
+
+    std::unordered_map<std::string, multi_eval_func<double>> double_refs = {
+        {"acos", stl_funs_dx1["acos"]},
+        {"acosh", stl_funs_dx1["acosh"]},
+        {"asin", stl_funs_dx1["asin"]},
+        {"asinh", stl_funs_dx1["asinh"]},
+        {"atan", stl_funs_dx1["atan"]},
+        {"atanh", stl_funs_dx1["atanh"]},
+        {"bessel_I0", gsl_funs["bessel_I0"]},
+        {"bessel_I1", gsl_funs["bessel_I1"]},
+        {"bessel_I2", gsl_funs["bessel_I2"]},
+        {"bessel_J0", gsl_funs["bessel_J0"]},
+        {"bessel_J1", gsl_funs["bessel_J1"]},
+        {"bessel_J2", gsl_funs["bessel_J2"]},
+        {"bessel_K0", gsl_funs["bessel_K0"]},
+        {"bessel_K1", gsl_funs["bessel_K1"]},
+        {"bessel_K2", gsl_funs["bessel_K2"]},
+        {"bessel_Y0", gsl_funs["bessel_Y0"]},
+        {"bessel_Y1", gsl_funs["bessel_Y1"]},
+        {"bessel_Y2", gsl_funs["bessel_Y2"]},
+        {"bessel_j0", gsl_funs["bessel_j0"]},
+        {"bessel_j1", gsl_funs["bessel_j1"]},
+        {"bessel_j2", gsl_funs["bessel_j2"]},
+        {"bessel_y0", gsl_funs["bessel_y0"]},
+        {"bessel_y1", gsl_funs["bessel_y1"]},
+        {"bessel_y2", gsl_funs["bessel_y2"]},
+        {"copy", sctl_funs_dx4["copy"]},
+        {"cos", stl_funs_dx1["cos"]},
+        {"cos_pi", boost_funs_dx1["cos_pi"]},
+        {"cosh", stl_funs_dx1["cosh"]},
+        {"digamma", boost_funs_dx1["digamma"]},
+        {"erf", stl_funs_dx1["erf"]},
+        {"erfc", stl_funs_dx1["erfc"]},
+        {"exp", stl_funs_dx1["exp"]},
+        {"exp10", stl_funs_dx1["exp10"]},
+        {"exp2", stl_funs_dx1["exp2"]},
+        {"hermite_0", boost_funs_dx1["hermite_0"]},
+        {"hermite_1", boost_funs_dx1["hermite_1"]},
+        {"hermite_2", boost_funs_dx1["hermite_2"]},
+        {"hermite_3", boost_funs_dx1["hermite_3"]},
+        {"lgamma", gsl_funs["lgamma"]},
+        {"log", stl_funs_dx1["log"]},
+        {"log10", stl_funs_dx1["log10"]},
+        {"log2", stl_funs_dx1["log2"]},
+        {"pow13", stl_funs_dx1["pow13"]},
+        {"pow3.5", stl_funs_dx1["pow3.5"]},
+        {"riemann_zeta", gsl_funs["riemann_zeta"]},
+        {"rsqrt", stl_funs_dx1["rsqrt"]},
+        {"sin", stl_funs_dx1["sin"]},
+        {"sin_pi", boost_funs_dx1["sin_pi"]},
+        {"sinc", gsl_funs["sinc"]},
+        {"sinc_pi", gsl_funs["sinc_pi"]},
+        {"sinh", stl_funs_dx1["sinh"]},
+        {"sqrt", stl_funs_dx1["sqrt"]},
+        {"tan", stl_funs_dx1["tan"]},
+        {"tanh", stl_funs_dx1["tanh"]},
+        {"tgamma", stl_funs_dx1["tgamma"]},
+    };
+
+    for (auto key : keys_to_eval)
+        std::cout << key << std::endl;
 
     auto &baobzi_funs = sf::functions::baobzi::get_funs_dx1(keys_to_eval, base_configurations);
 
@@ -367,7 +484,7 @@ int main(int argc, char *argv[]) {
             };
 
             auto get_conf_data = [&storage, &base_configurations](const std::string &name,
-                                                                   const std::string &ftype) -> configuration_t {
+                                                                  const std::string &ftype) -> configuration_t {
                 configuration_t config = base_configurations[name];
                 config.func = name;
                 config.ftype = ftype;
@@ -384,42 +501,55 @@ int main(int argc, char *argv[]) {
                 return config;
             };
 
+            Eigen::VectorXd vals_ref =
+                sf::utils::transform_domain<double>(vals, base_configurations[key].lbound, base_configurations[key].ubound);
+
+            Eigen::VectorXd dref;
+            if (double_refs.count(key)) {
+                dref.resize(vals_ref.size());
+                double_refs[key](vals_ref.data(), dref.data(), vals_ref.size());
+            }
+
             std::vector<measurement_t> ms;
 
             auto conf_f = get_conf_data(key, "f");
-            ms.push_back(test_func(amdlibm_funs_fx1[key], 1, libraries_info["amdlibm"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(amdlibm_funs_fx8[key], 8, libraries_info["amdlibm"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(af_funs_fx8[key], 8, libraries_info["agnerfog"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(af_funs_fx16[key], 16, libraries_info["agnerfog"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(boost_funs_fx1[key], 1, libraries_info["boost"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(eigen_funs[key], 0, libraries_info["eigen"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(sleef_funs_fx1[key], 1, libraries_info["sleef"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(sleef_funs_fx8[key], 8, libraries_info["sleef"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(sleef_funs_fx16[key], 16, libraries_info["sleef"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(sctl_funs_fx8[key], 8, libraries_info["sctl"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(sctl_funs_fx16[key], 16, libraries_info["sctl"], conf_f, fvals, n_repeat));
-            ms.push_back(test_func(stl_funs_fx1[key], 1, libraries_info["stl"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func<float>(amdlibm_funs_fx1[key], 1, libraries_info["amdlibm"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(amdlibm_funs_fx8[key], 8, libraries_info["amdlibm"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(af_funs_fx8[key], 8, libraries_info["agnerfog"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(af_funs_fx16[key], 16, libraries_info["agnerfog"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(boost_funs_fx1[key], 1, libraries_info["boost"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(eigen_funs[key], 0, libraries_info["eigen"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx1[key], 1, libraries_info["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx8[key], 8, libraries_info["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx16[key], 16, libraries_info["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sctl_funs_fx8[key], 8, libraries_info["sctl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sctl_funs_fx16[key], 16, libraries_info["sctl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(stl_funs_fx1[key], 1, libraries_info["stl"], conf_f, fvals, dref, n_repeat));
 
             auto conf_d = get_conf_data(key, "d");
-            ms.push_back(test_func(af_funs_dx4[key], 4, libraries_info["agnerfog"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(af_funs_dx8[key], 8, libraries_info["agnerfog"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(amdlibm_funs_dx1[key], 1, libraries_info["amdlibm"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(amdlibm_funs_dx4[key], 4, libraries_info["amdlibm"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(baobzi_funs[key], 1, libraries_info["baobzi"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(boost_funs_dx1[key], 1, libraries_info["boost"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(eigen_funs[key], 0, libraries_info["eigen"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(fort_funs[key], 1, libraries_info["fort"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(gsl_funs[key], 1, libraries_info["gsl"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(sctl_funs_dx4[key], 4, libraries_info["sctl"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(sctl_funs_dx8[key], 8, libraries_info["sctl"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(sleef_funs_dx1[key], 1, libraries_info["sleef"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(sleef_funs_dx4[key], 4, libraries_info["sleef"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(sleef_funs_dx8[key], 8, libraries_info["sleef"], conf_d, vals, n_repeat));
-            ms.push_back(test_func(stl_funs_dx1[key], 1, libraries_info["stl"], conf_d, vals, n_repeat));
+            ms.push_back(test_func<double>(af_funs_dx4[key], 4, libraries_info["agnerfog"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(af_funs_dx8[key], 8, libraries_info["agnerfog"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(amdlibm_funs_dx1[key], 1, libraries_info["amdlibm"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(amdlibm_funs_dx4[key], 4, libraries_info["amdlibm"], conf_d, vals, dref, n_repeat));
+            ms.push_back(
+                test_func<double>(baobzi_funs[key], 1, libraries_info["baobzi"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(boost_funs_dx1[key], 1, libraries_info["boost"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(eigen_funs[key], 0, libraries_info["eigen"],
+                                                                      conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(fort_funs[key], 1, libraries_info["fort"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(gsl_funs[key], 1, libraries_info["gsl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sctl_funs_dx4[key], 4, libraries_info["sctl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sctl_funs_dx8[key], 8, libraries_info["sctl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx1[key], 1, libraries_info["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx4[key], 4, libraries_info["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx8[key], 8, libraries_info["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(stl_funs_dx1[key], 1, libraries_info["stl"], conf_d, vals, dref, n_repeat));
 
             for (auto &meas : ms) {
+                if (!meas)
+                    continue;
                 std::cout << meas;
-                insert_measurement(meas);
+                storage.insert(meas);
             }
             // test_func(gsl_complex_funs, [key], "gsl_cdx1", params, cvals, n_repeat);
             // test_func(misc_funs_cdx1_x2[key], "misc_cdx1_x2", params, cvals, n_repeat);

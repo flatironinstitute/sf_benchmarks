@@ -57,7 +57,7 @@ std::string get_baobzi_version();
 std::string get_eigen_version();
 
 template <typename VAL_T>
-Eigen::VectorX<VAL_T> transform_domain(const Eigen::VectorX<VAL_T> &vals, double lower, double upper) {
+Eigen::VectorX<VAL_T> transform_domain(const Eigen::Ref<const Eigen::VectorX<VAL_T>> &vals, double lower, double upper) {
     VAL_T delta = upper - lower;
     return vals.array() * delta + lower;
 }
