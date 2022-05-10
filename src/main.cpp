@@ -14,22 +14,6 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-sf::utils::toolchain_info_t toolchain_info;
-sf::utils::host_info_t host_info;
-std::unordered_map<std::string, sf::utils::library_info_t> libraries_info = {
-    {"agnerfog", {0, "agnerfog", sf::utils::get_af_version()}},
-    {"amdlibm", {0, "amdlibm", sf::utils::get_alm_version()}},
-    {"baobzi", {0, "baobzi", sf::utils::get_baobzi_version()}},
-    {"boost", {0, "boost", sf::utils::get_boost_version()}},
-    {"eigen", {0, "eigen", sf::utils::get_eigen_version()}},
-    {"gsl", {0, "gsl", sf::utils::get_gsl_version()}},
-    {"fort", {0, "fort", "NA"}},
-    {"misc", {0, "misc", "NA"}},
-    {"sctl", {0, "sctl", sf::utils::get_sctl_version()}},
-    {"sleef", {0, "sleef", sf::utils::get_sleef_version()}},
-    {"stl", {0, "stl", "NA"}},
-};
-
 struct run_t {
     int id;
     std::string time;
@@ -37,7 +21,22 @@ struct run_t {
     std::unique_ptr<int> toolchain;
 };
 
-run_t current_run;
+run_t run_info;
+sf::utils::toolchain_info_t toolchain_info;
+sf::utils::host_info_t host_info;
+std::unordered_map<std::string, sf::utils::library_info_t> libraries_info = {
+    {"agnerfog", {.name = "agnerfog", .version = sf::utils::get_af_version()}},
+    {"amdlibm", {.name = "amdlibm", .version = sf::utils::get_alm_version()}},
+    {"baobzi", {.name = "baobzi", .version = sf::utils::get_baobzi_version()}},
+    {"boost", {.name = "boost", .version = sf::utils::get_boost_version()}},
+    {"eigen", {.name = "eigen", .version = sf::utils::get_eigen_version()}},
+    {"gsl", {.name = "gsl", .version = sf::utils::get_gsl_version()}},
+    {"fort", {.name = "fort", .version = "NA"}},
+    {"misc", {.name = "misc", .version = "NA"}},
+    {"sctl", {.name = "sctl", .version = sf::utils::get_sctl_version()}},
+    {"sleef", {.name = "sleef", .version = sf::utils::get_sleef_version()}},
+    {"stl", {.name = "stl", .version = "NA"}},
+};
 
 struct measurement_t {
     int id;
@@ -151,7 +150,7 @@ measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &l
     meas.config_copy = config;
     meas.library_copy = library_info;
 
-    meas.run = std::make_unique<int>(current_run.id);
+    meas.run = std::make_unique<int>(run_info.id);
     meas.configuration = std::make_unique<int>(config.id);
     meas.library = std::make_unique<int>(library_info.id);
     meas.nelem = x.size();
@@ -244,10 +243,10 @@ inline auto init_storage(const std::string &path) {
             lib.id = std::get<int>(library_ids[0]);
     }
 
-    current_run.time = storage.select(datetime("now")).front();
-    current_run.toolchain = std::make_unique<int>(toolchain_info.id);
-    current_run.host = std::make_unique<int>(host_info.id);
-    current_run.id = storage.insert(current_run);
+    run_info.time = storage.select(datetime("now")).front();
+    run_info.toolchain = std::make_unique<int>(toolchain_info.id);
+    run_info.host = std::make_unique<int>(host_info.id);
+    run_info.id = storage.insert(run_info);
 
     return storage;
 }
@@ -362,25 +361,32 @@ int main(int argc, char *argv[]) {
         Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(n_eval) + std::complex<double>{1.0, 1.0});
 
         for (auto key : keys_to_eval) {
-            auto conf_f = base_configurations[key];
-            conf_f.ftype = "f";
-            conf_f.func = key;
             auto insert_measurement = [&storage](measurement_t &meas) -> void {
                 if (meas)
                     storage.insert(meas);
             };
 
-            using namespace sqlite_orm;
-            auto conf_fids = storage.select(columns(&configuration_t::id),
-                                            where(is_equal(&configuration_t::ftype, conf_f.ftype) and
-                                                  is_equal(&configuration_t::func, conf_f.func) and
-                                                  is_equal(&configuration_t::lbound, conf_f.lbound) and
-                                                  is_equal(&configuration_t::ubound, conf_f.ubound) and
-                                                  is_equal(&configuration_t::ilbound, conf_f.ilbound) and
-                                                  is_equal(&configuration_t::iubound, conf_f.iubound)));
-            conf_f.id = conf_fids.size() ? std::get<int>(conf_fids[0]) : storage.insert(conf_f);
+            auto get_conf_data = [&storage, &base_configurations](const std::string &name,
+                                                                   const std::string &ftype) -> configuration_t {
+                configuration_t config = base_configurations[name];
+                config.func = name;
+                config.ftype = ftype;
+
+                using namespace sqlite_orm;
+                auto conf_ids = storage.select(columns(&configuration_t::id),
+                                               where(is_equal(&configuration_t::ftype, config.ftype) and
+                                                     is_equal(&configuration_t::func, config.func) and
+                                                     is_equal(&configuration_t::lbound, config.lbound) and
+                                                     is_equal(&configuration_t::ubound, config.ubound) and
+                                                     is_equal(&configuration_t::ilbound, config.ilbound) and
+                                                     is_equal(&configuration_t::iubound, config.iubound)));
+                config.id = conf_ids.size() ? std::get<int>(conf_ids[0]) : storage.insert(config);
+                return config;
+            };
 
             std::vector<measurement_t> ms;
+
+            auto conf_f = get_conf_data(key, "f");
             ms.push_back(test_func(amdlibm_funs_fx1[key], 1, libraries_info["amdlibm"], conf_f, fvals, n_repeat));
             ms.push_back(test_func(amdlibm_funs_fx8[key], 8, libraries_info["amdlibm"], conf_f, fvals, n_repeat));
             ms.push_back(test_func(af_funs_fx8[key], 8, libraries_info["agnerfog"], conf_f, fvals, n_repeat));
@@ -394,17 +400,7 @@ int main(int argc, char *argv[]) {
             ms.push_back(test_func(sctl_funs_fx16[key], 16, libraries_info["sctl"], conf_f, fvals, n_repeat));
             ms.push_back(test_func(stl_funs_fx1[key], 1, libraries_info["stl"], conf_f, fvals, n_repeat));
 
-            auto conf_d = base_configurations[key];
-            conf_d.func = key;
-            conf_d.ftype = "d";
-            auto conf_dids = storage.select(columns(&configuration_t::id),
-                                            where(is_equal(&configuration_t::ftype, conf_d.ftype) and
-                                                  is_equal(&configuration_t::func, conf_d.func) and
-                                                  is_equal(&configuration_t::lbound, conf_d.lbound) and
-                                                  is_equal(&configuration_t::ubound, conf_d.ubound) and
-                                                  is_equal(&configuration_t::ilbound, conf_d.ilbound) and
-                                                  is_equal(&configuration_t::iubound, conf_d.iubound)));
-            conf_d.id = conf_dids.size() ? std::get<int>(conf_dids[0]) : storage.insert(conf_d);
+            auto conf_d = get_conf_data(key, "d");
             ms.push_back(test_func(af_funs_dx4[key], 4, libraries_info["agnerfog"], conf_d, vals, n_repeat));
             ms.push_back(test_func(af_funs_dx8[key], 8, libraries_info["agnerfog"], conf_d, vals, n_repeat));
             ms.push_back(test_func(amdlibm_funs_dx1[key], 1, libraries_info["amdlibm"], conf_d, vals, n_repeat));
