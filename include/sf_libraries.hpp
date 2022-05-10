@@ -43,7 +43,7 @@ std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
 
 namespace baobzi {
 std::unordered_map<std::string, std::shared_ptr<::baobzi::Baobzi>> &
-get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string, Params> &params);
+get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string, configuration_t> &configs);
 }
 
 namespace boost {

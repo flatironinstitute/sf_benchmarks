@@ -27,16 +27,13 @@ create table toolchains (
 
 create table configurations (
   id integer primary key autoincrement,
-  funct text not null,
+  func text not null,
   ftype text not null,
-  nelem integer not null,
-  nrep integer not null,
-  vectlev integer not null,
   lbound real not null,
   ubound real not null,
   ilbound real null,
   iubound real null,
-  unique(funct, ftype, nelem, nrep, vectlev, lbound, ubound, ilbound, iubound)
+  unique(func, ftype, nelem, nrep, vectlev, lbound, ubound, ilbound, iubound)
 );
 
 create table runs (
@@ -51,8 +48,13 @@ create table measurements (
   run integer references runs,
   library integer not null references libraries,
   configuration integer not null references configurations,
+  nelem integer not null,
+  nrepeat integer not null,
+  vectlev integer not null,
   evalspersec real not null,
   meanevaltime real not null,
-  stddev real,
-  maxerr real
+  stddev real not null,
+  istddev real not null,
+  maxerr real,
+  imaxerr
 );

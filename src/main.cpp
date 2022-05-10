@@ -1,7 +1,9 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <set>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -10,99 +12,103 @@
 #include <sf_libraries.hpp>
 #include <sf_utils.hpp>
 
-#include <sqlite3.h>
+#include <sqlite_orm/sqlite_orm.h>
 
-const sf::utils::host_info_t host_info;
-const sf::utils::library_info_t libraries_info[] = {
-    {"agnerfog", sf::utils::get_af_version()},
-    {"amdlibm", sf::utils::get_alm_version()},
-    {"baobzi", sf::utils::get_baobzi_version()},
-    {"boost", sf::utils::get_boost_version()},
-    {"eigen", sf::utils::get_eigen_version()},
-    {"gsl", sf::utils::get_gsl_version()},
-    {"misc", "NA"},
-    {"sctl", sf::utils::get_sctl_version()},
-    {"sleef", sf::utils::get_sleef_version()},
-};
-const sf::utils::toolchain_info_t toolchain_info;
-
-template <typename VAL_T>
-class BenchResult {
-  public:
-    Eigen::VectorX<VAL_T> res;
-    double eval_time = 0.0;
-    std::string label;
-    std::size_t n_evals;
-    Params params;
-
-    BenchResult(const std::string &label_) : label(label_){};
-    BenchResult(const std::string &label_, std::size_t size, std::size_t n_evals_, Params params_)
-        : res(size), label(label_), n_evals(n_evals_), params(params_){};
-
-    VAL_T &operator[](int i) { return res[i]; }
-    double Mevals() const { return n_evals / eval_time / 1E6; }
-
-    template <typename T>
-    friend std::ostream &operator<<(std::ostream &, const BenchResult<T> &);
+sf::utils::toolchain_info_t toolchain_info;
+sf::utils::host_info_t host_info;
+std::unordered_map<std::string, sf::utils::library_info_t> libraries_info = {
+    {"agnerfog", {0, "agnerfog", sf::utils::get_af_version()}},
+    {"amdlibm", {0, "amdlibm", sf::utils::get_alm_version()}},
+    {"baobzi", {0, "baobzi", sf::utils::get_baobzi_version()}},
+    {"boost", {0, "boost", sf::utils::get_boost_version()}},
+    {"eigen", {0, "eigen", sf::utils::get_eigen_version()}},
+    {"gsl", {0, "gsl", sf::utils::get_gsl_version()}},
+    {"fort", {0, "fort", "NA"}},
+    {"misc", {0, "misc", "NA"}},
+    {"sctl", {0, "sctl", sf::utils::get_sctl_version()}},
+    {"sleef", {0, "sleef", sf::utils::get_sleef_version()}},
+    {"stl", {0, "stl", "NA"}},
 };
 
-template <typename VAL_T>
-std::ostream &operator<<(std::ostream &os, const BenchResult<VAL_T> &br) {
-    VAL_T mean = 0.0;
-    for (const auto &v : br.res)
-        mean += v;
-    mean /= br.res.size();
+struct run_t {
+    int id;
+    std::string time;
+    std::unique_ptr<int> host;
+    std::unique_ptr<int> toolchain;
+};
+
+run_t current_run;
+
+struct measurement_t {
+    int id;
+    std::unique_ptr<int> run;
+    std::unique_ptr<int> library;
+    std::unique_ptr<int> configuration;
+    sf::utils::library_info_t library_copy;
+    configuration_t config_copy;
+    int nelem = 0;
+    int nrepeat = 0;
+    int veclev = 0;
+    double megaevalspersec = 0;
+    double meanevaltime = 0;
+    double stddev = 0;
+    double maxerr = 0;
+
+    explicit operator bool() const { return nrepeat; }
+    friend std::ostream &operator<<(std::ostream &, const measurement_t &);
+};
+
+std::ostream &operator<<(std::ostream &os, const measurement_t &meas) {
 
     using std::left;
     using std::setw;
-    if (br.res.size()) {
+
+    if (meas) {
+        std::string label = meas.config_copy.func + "_" + meas.library_copy.name + "_" + meas.config_copy.ftype + "x" +
+                            std::to_string(meas.veclev);
+
         os.precision(6);
-        os << left << setw(25) << br.label + ": " << left << setw(15) << br.Mevals();
+        os << left << setw(25) << label + ": " << left << setw(15) << meas.megaevalspersec;
         os.precision(15);
-        os << left << setw(15) << mean << left << setw(5) << " ";
+        os << left << setw(15) << meas.meanevaltime << left << setw(5) << " ";
         os.precision(5);
-        os << "[" << br.params.domain.first << ", " << br.params.domain.second << "]" << std::endl;
+        os << "[" << meas.config_copy.lbound << ", " << meas.config_copy.ubound << "]" << std::endl;
     }
     return os;
 }
 
 #define EIGEN_CASE(OP)                                                                                                 \
     case sf::functions::eigen::OPS::OP: {                                                                              \
-        res_eigen = vals.array().OP();                                                                                 \
+        res = x.array().OP();                                                                                          \
         break;                                                                                                         \
     }
 
 template <typename FUN_T, typename VAL_T>
-BenchResult<VAL_T>
-test_func(const std::string name, const std::string library_prefix, const std::unordered_map<std::string, FUN_T> funs,
-          std::unordered_map<std::string, Params> params, const Eigen::VectorX<VAL_T> &vals_in, size_t Nrepeat) {
-    const std::string label = library_prefix + "_" + name;
-    if (!funs.count(name))
-        return BenchResult<VAL_T>(label);
+measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &library_info, configuration_t &config,
+                        const Eigen::VectorX<VAL_T> &x_in, int n_repeat) {
+    if (!f)
+        return measurement_t();
+    const std::string label = library_info.name + "_" + config.func;
 
-    const Params &par = params[name];
-    Eigen::VectorX<VAL_T> vals = sf::utils::transform_domain(vals_in, par.domain.first, par.domain.second);
+    Eigen::VectorX<VAL_T> x = sf::utils::transform_domain(x_in, config.lbound, config.ubound);
 
-    size_t res_size = vals.size();
-    size_t n_evals = vals.size() * Nrepeat;
+    size_t res_size = x.size();
+    size_t n_evals = x.size() * n_repeat;
     if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
         res_size *= 2;
-    BenchResult<VAL_T> res(label, res_size, n_evals, par);
-    VAL_T *resptr = res.res.data();
 
-    const FUN_T &f = funs.at(name);
+    Eigen::VectorX<VAL_T> res(res_size);
+    VAL_T *resptr = res.data();
 
     sf::utils::timer timer;
-    for (long k = 0; k < Nrepeat; k++) {
+    for (long k = 0; k < n_repeat; k++) {
         if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
-            for (std::size_t i = 0; i < vals.size(); ++i) {
-                std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(vals[i]);
+            for (std::size_t i = 0; i < x.size(); ++i) {
+                std::tie(resptr[i * 2], resptr[i * 2 + 1]) = f(x[i]);
             }
         } else if constexpr (std::is_same_v<FUN_T, std::shared_ptr<baobzi::Baobzi>>) {
-            (*f)(vals.data(), resptr, vals.size());
+            (*f)(x.data(), resptr, x.size());
         } else if constexpr (std::is_same_v<FUN_T, sf::functions::eigen::OPS>) {
-            Eigen::VectorX<VAL_T> &res_eigen = res.res;
-
             switch (f) {
                 EIGEN_CASE(cos)
                 EIGEN_CASE(sin)
@@ -127,27 +133,39 @@ test_func(const std::string name, const std::string library_prefix, const std::u
                 EIGEN_CASE(sqrt)
                 EIGEN_CASE(rsqrt)
             case sf::functions::eigen::OPS::pow35: {
-                res_eigen = vals.array().pow(3.5);
+                res = x.array().pow(3.5);
                 break;
             }
             case sf::functions::eigen::OPS::pow13: {
-                res_eigen = vals.array().pow(13);
+                res = x.array().pow(13);
                 break;
             }
             }
         } else {
-            f(vals.data(), resptr, vals.size());
+            f(x.data(), resptr, x.size());
         }
     }
     timer.stop();
 
-    res.eval_time = timer.elapsed();
+    measurement_t meas;
+    meas.config_copy = config;
+    meas.library_copy = library_info;
 
-    return res;
+    meas.run = std::make_unique<int>(current_run.id);
+    meas.configuration = std::make_unique<int>(config.id);
+    meas.library = std::make_unique<int>(library_info.id);
+    meas.nelem = x.size();
+    meas.nrepeat = n_repeat;
+    meas.megaevalspersec = n_evals / timer.elapsed() / 1E6;
+    meas.meanevaltime = timer.elapsed() / n_evals / 1E-9;
+    meas.veclev = veclev;
+
+    return meas;
 }
 #undef EIGEN_CASE
 
 std::set<std::string> parse_args(int argc, char *argv[]) {
+    // lol: "parse"
     std::set<std::string> res;
     for (int i = 0; i < argc; ++i)
         res.insert(argv[i]);
@@ -155,95 +173,97 @@ std::set<std::string> parse_args(int argc, char *argv[]) {
     return res;
 }
 
-class Database {
-  public:
-    Database() = default;
+inline auto init_storage(const std::string &path) {
+    using namespace sqlite_orm;
+    using sf::utils::host_info_t;
+    using sf::utils::library_info_t;
+    using sf::utils::toolchain_info_t;
 
-    Database(std::string db_file) {
-        if (std::filesystem::exists(db_file)) {
-            sqlite3_open(db_file.c_str(), &db_);
-            update_host_info();
-            update_library_info();
-            update_toolchain_info();
-        } else
-            throw std::runtime_error("DB file '" + db_file + "' does not exist.\n");
+    auto storage = make_storage(
+        "db.sqlite",
+        make_table(
+            "hosts", make_column("id", &host_info_t::id, autoincrement(), primary_key()),
+            make_column("cpuname", &host_info_t::cpuname, unique()), make_column("cpuclock", &host_info_t::cpuclock),
+            make_column("cpuclockmax", &host_info_t::cpuclockmax), make_column("memclock", &host_info_t::memclock),
+            make_column("l1dcache", &host_info_t::L1d), make_column("l1icache", &host_info_t::L1i),
+            make_column("l2cache", &host_info_t::L2), make_column("l3cache", &host_info_t::L3)),
+        make_table("configurations", make_column("id", &configuration_t::id, autoincrement(), primary_key()),
+                   make_column("func", &configuration_t::func), make_column("ftype", &configuration_t::ftype),
+                   make_column("lbound", &configuration_t::lbound), make_column("ubound", &configuration_t::ubound),
+                   make_column("ilbound", &configuration_t::ilbound), make_column("iubound", &configuration_t::iubound),
+                   sqlite_orm::unique(&configuration_t::func, &configuration_t::ftype, &configuration_t::lbound,
+                                      &configuration_t::ubound, &configuration_t::ilbound, &configuration_t::iubound)),
+        make_table("toolchains", make_column("id", &toolchain_info_t::id, autoincrement(), primary_key()),
+                   make_column("compiler", &toolchain_info_t::compiler),
+                   make_column("compilervers", &toolchain_info_t::compilervers),
+                   make_column("libcvers", &toolchain_info_t::libcvers),
+                   sqlite_orm::unique(&toolchain_info_t::compiler, &toolchain_info_t::compilervers,
+                                      &toolchain_info_t::libcvers)),
+        make_table("libraries", make_column("id", &library_info_t::id, autoincrement(), primary_key()),
+                   make_column("name", &library_info_t::name), make_column("version", &library_info_t::version),
+                   sqlite_orm::unique(&library_info_t::name, &library_info_t::version)),
+        make_table("runs", make_column("id", &run_t::id, autoincrement(), primary_key()),
+                   make_column("time", &run_t::time), make_column("host", &run_t::host),
+                   make_column("toolchain", &run_t::toolchain), foreign_key(&run_t::host).references(&host_info_t::id),
+                   foreign_key(&run_t::toolchain).references(&toolchain_info_t::id)),
+        make_table(
+            "measurements", make_column("id", &measurement_t::id, autoincrement(), primary_key()),
+            make_column("run", &measurement_t::run), make_column("library", &measurement_t::library),
+            make_column("configuration", &measurement_t::configuration), make_column("nelem", &measurement_t::nelem),
+            make_column("nrepeat", &measurement_t::nrepeat), make_column("veclev", &measurement_t::veclev),
+            make_column("megaevalspersec", &measurement_t::megaevalspersec),
+            make_column("meanevaltime", &measurement_t::meanevaltime), make_column("stddev", &measurement_t::stddev),
+            make_column("maxerr", &measurement_t::maxerr), foreign_key(&measurement_t::run).references(&run_t::id),
+            foreign_key(&measurement_t::library).references(&library_info_t::id),
+            foreign_key(&measurement_t::configuration).references(&configuration_t::id)));
+
+    storage.sync_schema();
+    auto host_ids =
+        storage.select(columns(&host_info_t::id), where(is_equal(&host_info_t::cpuname, host_info.cpuname)));
+    if (host_ids.size() == 0)
+        host_info.id = storage.insert(host_info);
+    else
+        host_info.id = std::get<int>(host_ids[0]);
+
+    auto toolchain_ids = storage.select(columns(&toolchain_info_t::id),
+                                        where(is_equal(&toolchain_info_t::compiler, toolchain_info.compiler) and
+                                              is_equal(&toolchain_info_t::compilervers, toolchain_info.compilervers) and
+                                              is_equal(&toolchain_info_t::libcvers, toolchain_info.libcvers)));
+    if (toolchain_ids.size() == 0)
+        toolchain_info.id = storage.insert(toolchain_info);
+    else
+        toolchain_info.id = std::get<int>(toolchain_ids[0]);
+
+    for (auto &[name, lib] : libraries_info) {
+        auto library_ids =
+            storage.select(columns(&library_info_t::id), where(is_equal(&library_info_t::name, lib.name) and
+                                                               is_equal(&library_info_t::version, lib.version)));
+        if (library_ids.size() == 0)
+            lib.id = storage.insert(lib);
+        else
+            lib.id = std::get<int>(library_ids[0]);
     }
 
-    ~Database() { sqlite3_close(db_); }
+    current_run.time = storage.select(datetime("now")).front();
+    current_run.toolchain = std::make_unique<int>(toolchain_info.id);
+    current_run.host = std::make_unique<int>(host_info.id);
+    current_run.id = storage.insert(current_run);
 
-    static int errcheck(char *err) {
-        if (err != NULL) {
-            std::cout << err << std::endl;
-            sqlite3_free(err);
-            return 1;
-        }
-        return 0;
-    }
+    return storage;
+}
 
-    static std::string join_args(std::initializer_list<std::string> list) {
-        auto quote = [](const std::string &str) { return "\"" + str + "\""; };
-        std::string res;
-        for (auto elem : list) {
-            res += quote(elem) + ",";
-        }
-        res.pop_back();
-        return res;
-    }
-
-    bool update_host_info() {
-        char *err = NULL;
-        std::string sql = "INSERT OR IGNORE INTO hosts (cpuname,l1dcache,l1icache,l2cache,l3cache) VALUES(" +
-                          join_args({host_info.cpu_name, host_info.L1d, host_info.L1i, host_info.L2, host_info.L3}) +
-                          ");";
-        sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
-        return errcheck(err);
-    }
-
-    bool update_library_info() {
-        bool iserr = false;
-        for (auto &library_info : libraries_info) {
-            char *err = NULL;
-            std::string sql = "INSERT OR IGNORE INTO libraries (name,version) VALUES(" +
-                              join_args({library_info.name, library_info.version}) + ");";
-            sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
-            if (errcheck(err))
-                iserr = true;
-        }
-        return iserr;
-    }
-
-    bool update_toolchain_info() {
-        char *err = NULL;
-        std::string sql = "INSERT OR IGNORE INTO toolchains (compiler,compilervers,libcvers) VALUES(" +
-                          join_args({toolchain_info.compiler, toolchain_info.compilervers, toolchain_info.libcvers}) +
-                          ");";
-        sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err);
-        return errcheck(err);
-    }
-
-  private:
-    sqlite3 *db_ = nullptr;
-};
+using Storage = decltype(init_storage(""));
 
 int main(int argc, char *argv[]) {
-    Database db("../sf_benchmarks.sqlite");
+    Storage storage = init_storage("db.sqlite");
 
-    std::cout << host_info.cpu_name << std::endl;
+    std::cout << host_info.cpuname << std::endl;
     std::cout << "    " + toolchain_info.compiler + ": " + toolchain_info.compilervers << std::endl;
     std::cout << "    libc: " + toolchain_info.libcvers << std::endl;
-    for (auto &library_info : libraries_info)
-        std::cout << "    " + library_info.name + ": " + library_info.version << std::endl;
+    for (auto &[key, lib] : libraries_info)
+        std::cout << "    " + lib.name + ": " + lib.version << std::endl;
 
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
-
-    std::unordered_map<std::string, Params> params = {
-        {"acos", {.domain{-1.0, 1.0}}},      {"asin", {.domain{-1.0, 1.0}}},      {"atan", {.domain{-100.0, 100.0}}},
-        {"acosh", {.domain{1.0, 1000.0}}},   {"asinh", {.domain{-100.0, 100.0}}}, {"atanh", {.domain{-1.0, 1.0}}},
-        {"bessel_Y0", {.domain{0.1, 30.0}}}, {"bessel_Y1", {.domain{0.1, 30.0}}}, {"bessel_Y2", {.domain{0.1, 30.0}}},
-        {"cos_pi", {.domain{0.0, 2.0}}},     {"sin_pi", {.domain{0.0, 2.0}}},     {"cos", {.domain{0.0, 2 * M_PI}}},
-        {"sin", {.domain{0.0, 2 * M_PI}}},   {"tan", {.domain{0.0, 2 * M_PI}}},   {"erf", {.domain{-1.0, 1.0}}},
-        {"erfc", {.domain{-1.0, 1.0}}},      {"exp", {.domain{-10.0, 10.0}}},     {"log", {.domain{0.0, 10.0}}},
-    };
 
     auto &af_funs_dx4 = sf::functions::af::get_funs_dx4();
     auto &af_funs_dx8 = sf::functions::af::get_funs_dx8();
@@ -306,11 +326,33 @@ int main(int argc, char *argv[]) {
     else
         keys_to_eval = fun_union;
 
-    auto &baobzi_funs = sf::functions::baobzi::get_funs_dx1(keys_to_eval, params);
-
     std::vector<std::pair<int, int>> run_sets;
     for (uint8_t shift = 0; shift <= 14; shift += 2)
         run_sets.push_back({1 << (10 + shift), 1 << (14 - shift)});
+
+    std::unordered_map<std::string, configuration_t> base_configurations = {
+        {"acos", {.lbound = -1.0, .ubound = 1.0}},
+        {"asin", {.lbound = -1.0, .ubound = 1.0}},
+        {"atan", {.lbound = -100.0, .ubound = 100.0}},
+        {"acosh", {.lbound = 1.0, .ubound = 1000.0}},
+        {"asinh", {.lbound = -100.0, .ubound = 100.0}},
+        {"atanh", {.lbound = -1.0, .ubound = 1.0}},
+        {"bessel_Y0", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_Y1", {.lbound = 0.1, .ubound = 30.0}},
+        {"bessel_Y2", {.lbound = 0.1, .ubound = 30.0}},
+        {"cos_pi", {.lbound = 0.0, .ubound = 2.0}},
+        {"sin_pi", {.lbound = 0.0, .ubound = 2.0}},
+        {"cos", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
+        {"sin", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
+        {"tan", {.lbound = 0.0, .ubound = 2 * M_PI}},
+        {"erf", {.lbound = -1.0, .ubound = 1.0}},
+        {"erfc", {.lbound = -1.0, .ubound = 1.0}},
+        {"exp", {.lbound = -10.0, .ubound = 10.0}},
+        {"log", {.lbound = 0.0, .ubound = 10.0}},
+        {"hank103", {.lbound = 0.0, .ubound = 10.0, .ilbound = 0.0, .iubound = 10.0}},
+    };
+
+    auto &baobzi_funs = sf::functions::baobzi::get_funs_dx1(keys_to_eval, base_configurations);
 
     for (auto &run_set : run_sets) {
         const auto &[n_eval, n_repeat] = run_set;
@@ -320,36 +362,71 @@ int main(int argc, char *argv[]) {
         Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(n_eval) + std::complex<double>{1.0, 1.0});
 
         for (auto key : keys_to_eval) {
-            std::cout << test_func(key, "amdlibm_fx1", amdlibm_funs_fx1, params, fvals, n_repeat);
-            std::cout << test_func(key, "amdlibm_fx8", amdlibm_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "agnerfog_fx8", af_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "agnerfog_fx16", af_funs_fx16, params, fvals, n_repeat);
-            std::cout << test_func(key, "boost_fx1", boost_funs_fx1, params, fvals, n_repeat);
-            std::cout << test_func(key, "eigen_fxx", eigen_funs, params, fvals, n_repeat);
-            std::cout << test_func(key, "sleef_fx1", sleef_funs_fx1, params, fvals, n_repeat);
-            std::cout << test_func(key, "sleef_fx8", sleef_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "sleef_fx16", sleef_funs_fx16, params, fvals, n_repeat);
-            std::cout << test_func(key, "sctl_fx8", sctl_funs_fx8, params, fvals, n_repeat);
-            std::cout << test_func(key, "sctl_fx16", sctl_funs_fx16, params, fvals, n_repeat);
-            std::cout << test_func(key, "stl_fx1", stl_funs_fx1, params, fvals, n_repeat);
+            auto conf_f = base_configurations[key];
+            conf_f.ftype = "f";
+            conf_f.func = key;
+            auto insert_measurement = [&storage](measurement_t &meas) -> void {
+                if (meas)
+                    storage.insert(meas);
+            };
 
-            std::cout << test_func(key, "agnerfog_dx4", af_funs_dx4, params, vals, n_repeat);
-            std::cout << test_func(key, "agnerfog_dx8", af_funs_dx8, params, vals, n_repeat);
-            std::cout << test_func(key, "amdlibm_dx1", amdlibm_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "amdlibm_dx4", amdlibm_funs_dx4, params, vals, n_repeat);
-            std::cout << test_func(key, "baobzi_dx1", baobzi_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "boost_dx1", boost_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "eigen_dxx", eigen_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "fort_dx1", fort_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "gsl_cdx1", gsl_complex_funs, params, cvals, n_repeat);
-            std::cout << test_func(key, "gsl_dx1", gsl_funs, params, vals, n_repeat);
-            std::cout << test_func(key, "misc_cdx1_x2", misc_funs_cdx1_x2, params, cvals, n_repeat);
-            std::cout << test_func(key, "sctl_dx4", sctl_funs_dx4, params, vals, n_repeat);
-            std::cout << test_func(key, "sctl_dx8", sctl_funs_dx8, params, vals, n_repeat);
-            std::cout << test_func(key, "sleef_dx1", sleef_funs_dx1, params, vals, n_repeat);
-            std::cout << test_func(key, "sleef_dx4", sleef_funs_dx4, params, vals, n_repeat);
-            std::cout << test_func(key, "sleef_dx8", sleef_funs_dx8, params, vals, n_repeat);
-            std::cout << test_func(key, "stl_dx1", stl_funs_dx1, params, vals, n_repeat);
+            using namespace sqlite_orm;
+            auto conf_fids = storage.select(columns(&configuration_t::id),
+                                            where(is_equal(&configuration_t::ftype, conf_f.ftype) and
+                                                  is_equal(&configuration_t::func, conf_f.func) and
+                                                  is_equal(&configuration_t::lbound, conf_f.lbound) and
+                                                  is_equal(&configuration_t::ubound, conf_f.ubound) and
+                                                  is_equal(&configuration_t::ilbound, conf_f.ilbound) and
+                                                  is_equal(&configuration_t::iubound, conf_f.iubound)));
+            conf_f.id = conf_fids.size() ? std::get<int>(conf_fids[0]) : storage.insert(conf_f);
+
+            std::vector<measurement_t> ms;
+            ms.push_back(test_func(amdlibm_funs_fx1[key], 1, libraries_info["amdlibm"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(amdlibm_funs_fx8[key], 8, libraries_info["amdlibm"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(af_funs_fx8[key], 8, libraries_info["agnerfog"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(af_funs_fx16[key], 16, libraries_info["agnerfog"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(boost_funs_fx1[key], 1, libraries_info["boost"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(eigen_funs[key], 0, libraries_info["eigen"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(sleef_funs_fx1[key], 1, libraries_info["sleef"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(sleef_funs_fx8[key], 8, libraries_info["sleef"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(sleef_funs_fx16[key], 16, libraries_info["sleef"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(sctl_funs_fx8[key], 8, libraries_info["sctl"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(sctl_funs_fx16[key], 16, libraries_info["sctl"], conf_f, fvals, n_repeat));
+            ms.push_back(test_func(stl_funs_fx1[key], 1, libraries_info["stl"], conf_f, fvals, n_repeat));
+
+            auto conf_d = base_configurations[key];
+            conf_d.func = key;
+            conf_d.ftype = "d";
+            auto conf_dids = storage.select(columns(&configuration_t::id),
+                                            where(is_equal(&configuration_t::ftype, conf_d.ftype) and
+                                                  is_equal(&configuration_t::func, conf_d.func) and
+                                                  is_equal(&configuration_t::lbound, conf_d.lbound) and
+                                                  is_equal(&configuration_t::ubound, conf_d.ubound) and
+                                                  is_equal(&configuration_t::ilbound, conf_d.ilbound) and
+                                                  is_equal(&configuration_t::iubound, conf_d.iubound)));
+            conf_d.id = conf_dids.size() ? std::get<int>(conf_dids[0]) : storage.insert(conf_d);
+            ms.push_back(test_func(af_funs_dx4[key], 4, libraries_info["agnerfog"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(af_funs_dx8[key], 8, libraries_info["agnerfog"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(amdlibm_funs_dx1[key], 1, libraries_info["amdlibm"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(amdlibm_funs_dx4[key], 4, libraries_info["amdlibm"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(baobzi_funs[key], 1, libraries_info["baobzi"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(boost_funs_dx1[key], 1, libraries_info["boost"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(eigen_funs[key], 0, libraries_info["eigen"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(fort_funs[key], 1, libraries_info["fort"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(gsl_funs[key], 1, libraries_info["gsl"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(sctl_funs_dx4[key], 4, libraries_info["sctl"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(sctl_funs_dx8[key], 8, libraries_info["sctl"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(sleef_funs_dx1[key], 1, libraries_info["sleef"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(sleef_funs_dx4[key], 4, libraries_info["sleef"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(sleef_funs_dx8[key], 8, libraries_info["sleef"], conf_d, vals, n_repeat));
+            ms.push_back(test_func(stl_funs_dx1[key], 1, libraries_info["stl"], conf_d, vals, n_repeat));
+
+            for (auto &meas : ms) {
+                std::cout << meas;
+                insert_measurement(meas);
+            }
+            // test_func(gsl_complex_funs, [key], "gsl_cdx1", params, cvals, n_repeat);
+            // test_func(misc_funs_cdx1_x2[key], "misc_cdx1_x2", params, cvals, n_repeat);
 
             std::cout << "\n";
         }

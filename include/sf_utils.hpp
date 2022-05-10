@@ -8,6 +8,7 @@
 namespace sf::utils {
 
 struct toolchain_info_t {
+    int id;
     std::string compiler;
     std::string compilervers;
     std::string libcvers;
@@ -16,7 +17,11 @@ struct toolchain_info_t {
 };
 
 struct host_info_t {
-    std::string cpu_name;
+    int id;
+    std::string cpuname;
+    std::string cpuclock;
+    std::string cpuclockmax;
+    std::string memclock;
     std::string L1d;
     std::string L1i;
     std::string L2;
@@ -26,6 +31,7 @@ struct host_info_t {
 };
 
 struct library_info_t {
+    int id;
     std::string name;
     std::string version;
 };

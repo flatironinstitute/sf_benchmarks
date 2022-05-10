@@ -42,6 +42,7 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/extern/eigen
   ${PROJECT_SOURCE_DIR}/extern/toml11
   ${PROJECT_SOURCE_DIR}/extern/vectorclass2
+  ${PROJECT_SOURCE_DIR}/extern/sqlite_orm/include
 )
 link_directories(${CMAKE_BINARY_DIR}/contrib/lib64 ${PROJECT_SOURCE_DIR}/extern/amd-libm/lib)
 

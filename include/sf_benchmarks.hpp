@@ -51,9 +51,14 @@ std::function<void(const VAL_T *, VAL_T *, size_t)> scalar_func_apply(const F &f
     return fn;
 }
 
-class Params {
-  public:
-    std::pair<double, double> domain{0.0, 1.0};
+struct configuration_t {
+    int id;
+    std::string func;
+    std::string ftype;
+    double lbound = 0.0;
+    double ubound = 1.0;
+    double ilbound = 0.0;
+    double iubound = 0.0;
 };
 
 

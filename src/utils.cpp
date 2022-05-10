@@ -4,7 +4,7 @@
 namespace sf::utils {
 
 host_info_t::host_info_t() {
-    cpu_name = exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3");
+    cpuname = exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3");
     L1d = exec("lscpu | grep L1d | awk '{print $3}'");
     L1i = exec("lscpu | grep L1i | awk '{print $3}'");
     L2 = exec("lscpu | grep L2 | awk '{print $3}'");

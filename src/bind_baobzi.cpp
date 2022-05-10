@@ -45,11 +45,13 @@ std::unordered_map<std::string, std::function<double(double)>> potential_baobzi_
 };
 
 std::unordered_map<std::string, std::shared_ptr<::baobzi::Baobzi>> &
-get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string, Params> &params) {
+get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string, configuration_t> &params) {
     for (auto &key : keys_to_eval) {
         if (potential_baobzi_funs.count(key) && !baobzi_funs.count(key)) {
             std::cerr << "Creating baobzi function '" + key + "'.\n";
-            baobzi_funs[key] = create_baobzi_func((void *)(&potential_baobzi_funs.at(key)), params[key].domain);
+            auto &param = params[key];
+            std::pair domain = std::make_pair(param.lbound, param.ubound);
+            baobzi_funs[key] = create_baobzi_func((void *)(&potential_baobzi_funs.at(key)), domain);
         }
     }
 

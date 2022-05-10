@@ -16,3 +16,6 @@
 [submodule "extern/vectorclass2"]
 	path = extern/vectorclass2
 	url = https://github.com/vectorclass/version2
+[submodule "extern/sqlite_orm"]
+	path = extern/sqlite_orm
+	url = https://github.com/fnc12/sqlite_orm
