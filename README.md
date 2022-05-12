@@ -5,7 +5,7 @@ getting there.
 
 ## Interpreting the results
 * `func`: the elementary/special function of interest
-* `name`: the shorthand name for the library
+* `lib`: the shorthand name for the library
   * agnerfog: [Agner fog's C++ vector template library](https://github.com/vectorclass/version2)
   * amdlibm: [AMD Math Library (LibM)](https://developer.amd.com/amd-aocl/amd-math-library-libm/)
   * baobzi: [Baobzi (adaptive fast function interpolator)](https://github.com/flatironinstitute/baobzi)
@@ -17,7 +17,7 @@ getting there.
   * sctl: [Scientific Computing Template Library](https://github.com/dmalhotra/SCTL)
   * sleef: [Sleef Vectoried Math Library](https://sleef.org)
   * stl: C++ Standard Library implementation (e.g. std::cos)
-* `ftype`: numeric type of input argument
+* `type`: numeric type of input argument
   * `d`: double
   * `f`: float
   * `cd`: complex double
@@ -30,9 +30,9 @@ getting there.
 * `veclev`: CPU SIMD vectorization level
   * `0` is ambiguous (Eigen sometimes vectorizes and sometimes doesn't)
   * `N` means `N` elements are processed simultaneously using CPU SIMD vectorization
-* `lbound`: lower bound of function domain tested
-* `ubound`: upper bound of function domain tested
-* `megaevalspersecond`: Millions of evaluations per second on average
+* `lb`: lower bound of function domain tested
+* `ub`: upper bound of function domain tested
+* `Mevals/s`: Millions of evaluations per second on average
 
 All inputs are uniformly randomly distributed on the domain of interest. Since some functions perform poorly at specific
 ranges of inputs, these results can unfortunately vary quite a bit, and so should be only used as a general guide. Some
@@ -66,13 +66,13 @@ Xeon(R) Gold 6128 CPU @ 3.40GHz
 <table>
 
 <TR><TH>func</TH>
-<TH>name</TH>
-<TH>ftype</TH>
+<TH>lib</TH>
+<TH>type</TH>
 <TH>nelem</TH>
 <TH>veclev</TH>
-<TH>lbound</TH>
-<TH>ubound</TH>
-<TH>megaevalspersec</TH>
+<TH>lb</TH>
+<TH>ub</TH>
+<TH>Mevals/s</TH>
 </TR>
 <TR><TD>acos</TD>
 <TD>agnerfog</TD>
