@@ -5,6 +5,8 @@
 #include <ctime>
 #include <string>
 
+#include <x86intrin.h>
+
 namespace sf::utils {
 
 struct toolchain_info_t {
@@ -40,10 +42,14 @@ struct timer {
     struct timespec ts;
     struct timespec tf;
 
+    unsigned long long tscs;
+    unsigned long long tscf;
+
     timer() { start(); }
-    void start() { clock_gettime(CLOCK_MONOTONIC, &ts); }
-    void stop() { clock_gettime(CLOCK_MONOTONIC, &tf); }
+    void start() { clock_gettime(CLOCK_MONOTONIC, &ts); tscs = __rdtsc(); }
+    void stop() { clock_gettime(CLOCK_MONOTONIC, &tf); tscf = __rdtsc(); }
     double elapsed() { return (tf.tv_sec - ts.tv_sec) + (tf.tv_nsec - ts.tv_nsec) * 1E-9; }
+    unsigned long long ticks_elapsed() { return tscf - tscs; }
 };
 
 std::string exec(const char *cmd);

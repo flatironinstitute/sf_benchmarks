@@ -49,6 +49,7 @@ struct measurement_t {
     int nrepeat = 0;
     int veclev = 0;
     double megaevalspersec = 0;
+    double cyclespereval = 0;
     double meanevaltime = 0;
     double stddev = 0;
     double maxerr = 0;
@@ -70,7 +71,7 @@ std::ostream &operator<<(std::ostream &os, const measurement_t &meas) {
         os.precision(6);
         os << left << setw(25) << label + ": " << left << setw(15) << meas.megaevalspersec;
         os.precision(15);
-        os << left << setw(15) << meas.meanevaltime << left << setw(5) << " ";
+        os << left << setw(15) << meas.cyclespereval << left << setw(5) << " ";
         os.precision(5);
         os << "[" << meas.config_copy.lbound << ", " << meas.config_copy.ubound << "]" << std::endl;
     }
@@ -85,12 +86,12 @@ std::ostream &operator<<(std::ostream &os, const measurement_t &meas) {
 
 template <typename VAL_T, typename FUN_T>
 measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &library_info, configuration_t &config,
-                        const Eigen::Ref<const Eigen::VectorX<VAL_T>> &x_in, const Eigen::Ref<const Eigen::VectorXd> &y_ref, int n_repeat) {
+                        const Eigen::Ref<const Eigen::VectorX<VAL_T>> &x_in,
+                        const Eigen::Ref<const Eigen::VectorXd> &y_ref, int n_repeat) {
     if (!f)
         return measurement_t();
     const std::string label = library_info.name + "_" + config.func;
 
-    
     Eigen::VectorX<VAL_T> x = sf::utils::transform_domain<VAL_T>(x_in, config.lbound, config.ubound);
 
     size_t res_size = x.size();
@@ -157,6 +158,7 @@ measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &l
     meas.library = std::make_unique<int>(library_info.id);
     meas.nelem = x.size();
     meas.nrepeat = n_repeat;
+    meas.cyclespereval = timer.ticks_elapsed() / (double)n_evals;
     meas.megaevalspersec = n_evals / timer.elapsed() / 1E6;
     meas.meanevaltime = timer.elapsed() / n_evals / 1E-9;
     meas.veclev = veclev;
@@ -228,6 +230,7 @@ inline auto init_storage(const std::string &path) {
             make_column("configuration", &measurement_t::configuration), make_column("nelem", &measurement_t::nelem),
             make_column("nrepeat", &measurement_t::nrepeat), make_column("veclev", &measurement_t::veclev),
             make_column("megaevalspersec", &measurement_t::megaevalspersec),
+            make_column("cyclespereval", &measurement_t::cyclespereval),
             make_column("meanevaltime", &measurement_t::meanevaltime), make_column("stddev", &measurement_t::stddev),
             make_column("maxrelerr", &measurement_t::maxrelerr), make_column("maxerr", &measurement_t::maxerr),
             foreign_key(&measurement_t::run).references(&run_t::id),
@@ -501,8 +504,8 @@ int main(int argc, char *argv[]) {
                 return config;
             };
 
-            Eigen::VectorXd vals_ref =
-                sf::utils::transform_domain<double>(vals, base_configurations[key].lbound, base_configurations[key].ubound);
+            Eigen::VectorXd vals_ref = sf::utils::transform_domain<double>(vals, base_configurations[key].lbound,
+                                                                           base_configurations[key].ubound);
 
             Eigen::VectorXd dref;
             if (double_refs.count(key)) {
@@ -511,39 +514,38 @@ int main(int argc, char *argv[]) {
             }
 
             std::vector<measurement_t> ms;
+            auto &libs = libraries_info;
 
             auto conf_f = get_conf_data(key, "f");
-            ms.push_back(test_func<float>(amdlibm_funs_fx1[key], 1, libraries_info["amdlibm"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(amdlibm_funs_fx8[key], 8, libraries_info["amdlibm"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(af_funs_fx8[key], 8, libraries_info["agnerfog"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(af_funs_fx16[key], 16, libraries_info["agnerfog"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(boost_funs_fx1[key], 1, libraries_info["boost"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(eigen_funs[key], 0, libraries_info["eigen"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sleef_funs_fx1[key], 1, libraries_info["sleef"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sleef_funs_fx8[key], 8, libraries_info["sleef"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sleef_funs_fx16[key], 16, libraries_info["sleef"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sctl_funs_fx8[key], 8, libraries_info["sctl"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sctl_funs_fx16[key], 16, libraries_info["sctl"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(stl_funs_fx1[key], 1, libraries_info["stl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(amdlibm_funs_fx1[key], 1, libs["amdlibm"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(amdlibm_funs_fx8[key], 8, libs["amdlibm"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(af_funs_fx8[key], 8, libs["agnerfog"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(af_funs_fx16[key], 16, libs["agnerfog"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(boost_funs_fx1[key], 1, libs["boost"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(eigen_funs[key], 0, libs["eigen"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx1[key], 1, libs["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx8[key], 8, libs["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx16[key], 16, libs["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sctl_funs_fx8[key], 8, libs["sctl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sctl_funs_fx16[key], 16, libs["sctl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(stl_funs_fx1[key], 1, libs["stl"], conf_f, fvals, dref, n_repeat));
 
             auto conf_d = get_conf_data(key, "d");
-            ms.push_back(test_func<double>(af_funs_dx4[key], 4, libraries_info["agnerfog"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(af_funs_dx8[key], 8, libraries_info["agnerfog"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(amdlibm_funs_dx1[key], 1, libraries_info["amdlibm"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(amdlibm_funs_dx4[key], 4, libraries_info["amdlibm"], conf_d, vals, dref, n_repeat));
-            ms.push_back(
-                test_func<double>(baobzi_funs[key], 1, libraries_info["baobzi"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(boost_funs_dx1[key], 1, libraries_info["boost"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(eigen_funs[key], 0, libraries_info["eigen"],
-                                                                      conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(fort_funs[key], 1, libraries_info["fort"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(gsl_funs[key], 1, libraries_info["gsl"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sctl_funs_dx4[key], 4, libraries_info["sctl"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sctl_funs_dx8[key], 8, libraries_info["sctl"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sleef_funs_dx1[key], 1, libraries_info["sleef"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sleef_funs_dx4[key], 4, libraries_info["sleef"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sleef_funs_dx8[key], 8, libraries_info["sleef"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(stl_funs_dx1[key], 1, libraries_info["stl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(af_funs_dx4[key], 4, libs["agnerfog"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(af_funs_dx8[key], 8, libs["agnerfog"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(amdlibm_funs_dx1[key], 1, libs["amdlibm"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(amdlibm_funs_dx4[key], 4, libs["amdlibm"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(baobzi_funs[key], 1, libs["baobzi"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(boost_funs_dx1[key], 1, libs["boost"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(eigen_funs[key], 0, libs["eigen"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(fort_funs[key], 1, libs["fort"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(gsl_funs[key], 1, libs["gsl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sctl_funs_dx4[key], 4, libs["sctl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sctl_funs_dx8[key], 8, libs["sctl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx1[key], 1, libs["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx4[key], 4, libs["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx8[key], 8, libs["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(stl_funs_dx1[key], 1, libs["stl"], conf_d, vals, dref, n_repeat));
 
             for (auto &meas : ms) {
                 if (!meas)
