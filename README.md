@@ -4,8 +4,8 @@ Some preliminary results on my workstation. Not yet definitive, but
 getting there.
 
 ## Interpreting the results
-* func: the elementary/special function of interest
-* name: the shorthand name for the library
+* `func`: the elementary/special function of interest
+* `name`: the shorthand name for the library
   * agnerfog: [Agner fog's C++ vector template library](https://github.com/vectorclass/version2)
   * amdlibm: [AMD Math Library (LibM)](https://developer.amd.com/amd-aocl/amd-math-library-libm/)
   * baobzi: [Baobzi (adaptive fast function interpolator)](https://github.com/flatironinstitute/baobzi)
@@ -17,6 +17,33 @@ getting there.
   * sctl: [Scientific Computing Template Library](https://github.com/dmalhotra/SCTL)
   * sleef: [Sleef Vectoried Math Library](https://sleef.org)
   * stl: C++ Standard Library implementation (e.g. std::cos)
+* `ftype`: numeric type of input argument
+  * `d`: double
+  * `f`: float
+  * `cd`: complex double
+  * `cf`: complex float
+* `nelem`: number of elements in input test vector.
+  * If `1024`, measured `16384` times. Cache friendly (relevant if doing special function in long list of other things
+    to your input)
+  * If `16777216`, measure `1` time. Not cache friendly (relevant if only calling the function and storing in a result
+    array. will be memory bound if implementation is fast enough
+* `veclev`: CPU SIMD vectorization level
+  * `0` is ambiguous (Eigen sometimes vectorizes and sometimes doesn't)
+  * `N` means `N` elements are processed simultaneously using CPU SIMD vectorization
+* `lbound`: lower bound of function domain tested
+* `ubound`: upper bound of function domain tested
+* `megaevalspersecond`: Millions of evaluations per second on average
+
+All inputs are uniformly randomly distributed on the domain of interest. Since some functions perform poorly at specific
+ranges of inputs, these results can unfortunately vary quite a bit, and so should be only used as a general guide. Some
+functions also perform much better on sorted data (such as `Baobzi` generated functions), so this test is not ideal for
+every type of use. It's designed to be as fair as possible without diving deep into the implementations. It certainly is
+possible to measure the performance on more structured data, as well as over different domains, I just haven't done it
+yet, nor do I have a means to present it meaningfully yet. If there is interest, I'll look closer at these kinds of
+problems.
+
+Complex functions (input or output) are currently not implemented, though they will be again... soon.
+
 
 ## Results from my workstation
 ```
