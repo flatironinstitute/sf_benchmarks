@@ -70,9 +70,9 @@ Xeon(R) Gold 6128 CPU @ 3.40GHz
 <TH>ftype</TH>
 <TH>nelem</TH>
 <TH>veclev</TH>
-<TH>ROUND(configurations.lbound, 2)</TH>
-<TH>ROUND(configurations.ubound, 2)</TH>
-<TH>ROUND(measurements.megaevalspersec, 1)</TH>
+<TH>lbound</TH>
+<TH>ubound</TH>
+<TH>megaevalspersec</TH>
 </TR>
 <TR><TD>acos</TD>
 <TD>agnerfog</TD>
