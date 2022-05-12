@@ -126,7 +126,7 @@ std::unordered_map<std::string, multi_eval_func<double>> funs_dx4 = {
     {"pow13", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return Sleef_powd4_u10avx2(x, Vec4d{13}); })},
 };
 
-#ifdef _AVX512F_
+#ifdef __AVX512F__
 std::unordered_map<std::string, multi_eval_func<float>> funs_fx16 = {
     {"sin_pi", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_sinpif16_u05avx512f(x); })},
     {"cos_pi", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Sleef_cospif16_u05avx512f(x); })},
