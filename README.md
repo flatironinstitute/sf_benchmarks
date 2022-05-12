@@ -3,15 +3,37 @@
 Some preliminary results on my workstation. Not yet definitive, but
 getting there.
 
-```
-Model name:          Intel(R) Xeon(R) Gold 6128 CPU @ 3.40GHz
-CPU MHz:             3400.000
-CPU max MHz:         3700.0000
-CPU min MHz:         1200.0000
+## Interpreting the results
+* func: the elementary/special function of interest
+* name: the shorthand name for the library
+  * agnerfog: [Agner fog's C++ vector template library](https://github.com/vectorclass/version2)
+  * amdlibm: [AMD Math Library (LibM)](https://developer.amd.com/amd-aocl/amd-math-library-libm/)
+  * baobzi: [Baobzi (adaptive fast function interpolator)](https://github.com/flatironinstitute/baobzi)
+  * boost: [Boost (C++ general template library)](https://boost.org)
+  * eigen: [Eigen (C++ matrix template library)](https://eigen.tuxfamily.org)
+  * gsl: [GNU Scientific Library](https://gnu.org/software/gsl)
+  * fort: Fortran (Fortran apparently has bessel functions natively)
+  * misc: Miscellaneous source files from all over
+  * sctl: [Scientific Computing Template Library](https://github.com/dmalhotra/SCTL)
+  * sleef: [Sleef Vectoried Math Library](https://sleef.org)
+  * stl: C++ Standard Library implementation (e.g. std::cos)
 
-gcc 11.2.0 (-march=native -O3)
-rocky8
-glibc 2.28
+## Results from my workstation
+```
+Xeon(R) Gold 6128 CPU @ 3.40GHz
+    gcc: 11.2.0
+    libc: 2.28
+    stl: NA
+    sctl: 1.0.0-6-gfa11de5
+    gsl: 2.7
+    eigen: 3.4.0
+    fort: NA
+    boost: 1.78.0
+    sleef: 3.5.1
+    misc: NA
+    baobzi: 0.9.3
+    amdlibm: 3.8
+    agnerfog: 2.1.3
 ```
 
 <table>
