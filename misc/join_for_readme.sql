@@ -9,7 +9,8 @@ SELECT
     measurements.veclev,
     ROUND(configurations.lbound, 2),
     ROUND(configurations.ubound, 2),
-    ROUND(measurements.megaevalspersec, 1)
+    ROUND(measurements.megaevalspersec, 1),
+    ROUND(measurements.cyclespereval, 1)
 FROM
     configurations
 JOIN measurements
