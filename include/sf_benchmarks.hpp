@@ -3,8 +3,13 @@
 
 #include <complex>
 #include <functional>
-#include <vectorclass.h>
 #include <sctl.hpp>
+#include <sys/cdefs.h>
+#include <vectorclass.h>
+
+// Attempt to force non-aliased pointers actually seems to slow things down...
+//#define RESTRICT __restrict
+#define RESTRICT
 
 typedef std::complex<double> cdouble;
 typedef sctl::Vec<double, 4> sctl_dx4;
@@ -19,34 +24,32 @@ template <class VAL_T>
 using multi_eval_func = std::function<void(const VAL_T *, VAL_T *, size_t)>;
 
 template <class VAL_T, int VecLen, class F>
-std::function<void(const VAL_T *, VAL_T *, size_t)> sctl_apply(const F &f) {
-    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
+std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> sctl_apply(const F &f) {
+    static const auto fn = [f](const VAL_T *RESTRICT vals, VAL_T *RESTRICT res, size_t N) {
         using Vec = sctl::Vec<VAL_T, VecLen>;
         for (size_t i = 0; i < N; i += VecLen) {
-            Vec v = Vec::LoadAligned(vals + i);
-            f(v).StoreAligned(res + i);
+            f(Vec::LoadAligned(vals + i)).StoreAligned(res + i);
         }
     };
     return fn;
 }
 
 template <class VEC_T, class VAL_T, class F>
-std::function<void(const VAL_T *, VAL_T *, size_t)> vec_func_apply(const F &f) {
-    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
+std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> vec_func_apply(const F &f) {
+    static const auto fn = [f](const VAL_T *RESTRICT vals, VAL_T *RESTRICT res, size_t N) {
         for (size_t i = 0; i < N; i += VEC_T::size()) {
-            VEC_T x;
-            x.load_a(vals + i);
-            VEC_T(f(x)).store_a(res + i);
+            f(VEC_T().load_a(vals + i)).store_a(res + i);
         }
     };
     return fn;
 }
 
 template <class VAL_T, class F>
-std::function<void(const VAL_T *, VAL_T *, size_t)> scalar_func_apply(const F &f) {
-    static const auto fn = [f](const VAL_T *vals, VAL_T *res, size_t N) {
-        for (size_t i = 0; i < N; i++)
+std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> scalar_func_apply(const F &f) {
+    static const auto fn = [f](const VAL_T *RESTRICT vals, VAL_T *RESTRICT res, size_t N) {
+        for (size_t i = 0; i < N; i += 1) {
             res[i] = f(vals[i]);
+        }
     };
     return fn;
 }
@@ -61,5 +64,5 @@ struct configuration_t {
     double iubound = 0.0;
 };
 
-
+#undef RESTRICT
 #endif

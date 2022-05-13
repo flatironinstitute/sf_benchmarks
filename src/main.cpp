@@ -100,9 +100,16 @@ measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &l
         res_size *= 2;
 
     Eigen::VectorX<VAL_T> res(res_size);
+    // Force malloc to give us the entire array (rather than possibly delaying until the first write)
+    // Could also use mlock, which might be worth investigating, but won't be relevant to eigen
+    res.setOnes();
     VAL_T *resptr = res.data();
 
+    // Lazy attempt to evict cache
+    Eigen::VectorXd dummy = Eigen::VectorXd::Ones(2E7 / 8);
+
     sf::utils::timer timer;
+
     for (long k = 0; k < n_repeat; k++) {
         if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>) {
             for (std::size_t i = 0; i < x.size(); ++i) {
@@ -375,7 +382,6 @@ int main(int argc, char *argv[]) {
         {"bessel_y0", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_y1", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_y2", {.lbound = 0.1, .ubound = 30.0}},
-        {"copy", {.lbound = 0.0, .ubound = 1.0}},
         {"cos", {.lbound = 0.0, .ubound = 2 * M_PI, .ilbound = 0.0, .iubound = 2 * M_PI}},
         {"cos_pi", {.lbound = 0.0, .ubound = 2.0}},
         {"cosh", {.lbound = 0.0, .ubound = 1.0}},
@@ -394,6 +400,8 @@ int main(int argc, char *argv[]) {
         {"log", {.lbound = 0.0, .ubound = 10.0}},
         {"log10", {.lbound = 0.0, .ubound = 10.0}},
         {"log2", {.lbound = 0.0, .ubound = 10.0}},
+        {"memcpy", {.lbound = 0.0, .ubound = 1.0}},
+        {"memset", {.lbound = 0.0, .ubound = 1.0}},
         {"ndtri", {.lbound = 0.0, .ubound = 1.0}},
         {"pow13", {.lbound = 0.0, .ubound = 1.0}},
         {"pow3.5", {.lbound = 0.0, .ubound = 1.0}},
@@ -435,7 +443,7 @@ int main(int argc, char *argv[]) {
         {"bessel_y0", gsl_funs["bessel_y0"]},
         {"bessel_y1", gsl_funs["bessel_y1"]},
         {"bessel_y2", gsl_funs["bessel_y2"]},
-        {"copy", sctl_funs_dx4["copy"]},
+        {"memcpy", sctl_funs_dx4["memcpy"]},
         {"cos", stl_funs_dx1["cos"]},
         {"cos_pi", boost_funs_dx1["cos_pi"]},
         {"cosh", stl_funs_dx1["cosh"]},

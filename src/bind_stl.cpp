@@ -1,11 +1,9 @@
-#include <dlfcn.h>
-#include <string>
-#include <unordered_map>
-
 #include <sf_libraries.hpp>
 
 namespace sf::functions::stl {
 std::unordered_map<std::string, multi_eval_func<float>> funs_fx1 = {
+    {"memcpy", [](const float *src, float *dst, size_t N) { std::memcpy(dst, src, N * sizeof(float)); }},
+    {"memset", [](const float *src, float *dst, size_t N) { std::memset(dst, 0, N * sizeof(float)); }},
     {"tgamma", scalar_func_apply<float>([](float x) -> float { return std::tgamma(x); })},
     {"lgamma", scalar_func_apply<float>([](float x) -> float { return std::lgamma(x); })},
     {"sin", scalar_func_apply<float>([](float x) -> float { return std::sin(x); })},
@@ -40,6 +38,8 @@ std::unordered_map<std::string, multi_eval_func<float>> funs_fx1 = {
 };
 
 std::unordered_map<std::string, multi_eval_func<double>> funs_dx1 = {
+    {"memcpy", [](const double *src, double *dst, size_t N) { std::memcpy(dst, src, N * sizeof(double)); }},
+    {"memset", [](const double *src, double *dst, size_t N) { std::memset(dst, 0, N * sizeof(double)); }},
     {"tgamma", scalar_func_apply<double>([](double x) -> double { return std::tgamma(x); })},
     {"lgamma", scalar_func_apply<double>([](double x) -> double { return std::lgamma(x); })},
     {"sin", scalar_func_apply<double>([](double x) -> double { return std::sin(x); })},

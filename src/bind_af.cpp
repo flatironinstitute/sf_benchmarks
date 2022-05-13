@@ -1,7 +1,3 @@
-#include <dlfcn.h>
-#include <string>
-#include <unordered_map>
-
 #include <sf_libraries.hpp>
 
 namespace sf::functions::af {
@@ -55,6 +51,8 @@ std::unordered_map<std::string, multi_eval_func<double>> funs_dx4 = {
 
 #ifdef __AVX512F__
 std::unordered_map<std::string, multi_eval_func<float>> funs_fx16 = {
+    {"memcpy", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return x; })},
+    {"memset", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return Vec16f{0.0}; })},
     {"sqrt", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return sqrt(x); })},
     {"sin", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return sin(x); })},
     {"cos", vec_func_apply<Vec16f, float>([](Vec16f x) -> Vec16f { return cos(x); })},
@@ -79,6 +77,8 @@ std::unordered_map<std::string, multi_eval_func<float>> funs_fx16 = {
 };
 
 std::unordered_map<std::string, multi_eval_func<double>> funs_dx8 = {
+    {"memset", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return Vec8d{0.0}; })},
+    {"memcpy", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return x; })},
     {"sqrt", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sqrt(x); })},
     {"sin", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return sin(x); })},
     {"cos", vec_func_apply<Vec8d, double>([](Vec8d x) -> Vec8d { return cos(x); })},

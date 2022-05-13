@@ -1,9 +1,5 @@
-#include <dlfcn.h>
-#include <string>
-#include <unordered_map>
-
-#include <sf_libraries.hpp>
 #include <baobzi.hpp>
+#include <sf_libraries.hpp>
 
 namespace sf::functions::baobzi {
 using ::baobzi::Baobzi;
@@ -58,4 +54,4 @@ get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string
     return baobzi_funs;
 }
 
-} // namespace sf::functions::misc
+} // namespace sf::functions::baobzi

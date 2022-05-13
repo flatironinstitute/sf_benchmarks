@@ -3,6 +3,9 @@
 
 #include <sf_benchmarks.hpp>
 
+#include <string>
+#include <unordered_map>
+
 #include <Eigen/Core>
 #include <baobzi.hpp>
 #include <boost/math/special_functions.hpp>
@@ -18,7 +21,6 @@
 #include <boost/version.hpp>
 #include <gnu/libc-version.h>
 #include <gsl/gsl_version.h>
-
 
 extern "C" {
 void hank103_(double _Complex *, double _Complex *, double _Complex *, int *);

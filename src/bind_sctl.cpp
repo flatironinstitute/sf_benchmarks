@@ -1,13 +1,10 @@
-#include <dlfcn.h>
-#include <string>
-#include <unordered_map>
-
 #include <sf_libraries.hpp>
 
 namespace sf::functions::SCTL {
 
 std::unordered_map<std::string, multi_eval_func<float>> funs_fx8 = {
-    {"copy", sctl_apply<float, 8>([](const sctl_fx8 &x) { return x; })},
+    {"memcpy", sctl_apply<float, 8>([](const sctl_fx8 &x) { return x; })},
+    {"memset", sctl_apply<float, 8>([](const sctl_fx8 &x) -> sctl_fx8 { return (sctl_fx8::VData)Vec8f{0.0}; })},
     {"exp", sctl_apply<float, 8>([](const sctl_fx8 &x) { return sctl::approx_exp<7>(x); })},
     {"sin", sctl_apply<float, 8>([](const sctl_fx8 &x) {
          sctl_fx8 sinx, cosx;
@@ -23,7 +20,8 @@ std::unordered_map<std::string, multi_eval_func<float>> funs_fx8 = {
 };
 
 std::unordered_map<std::string, multi_eval_func<double>> funs_dx4 = {
-    {"copy", sctl_apply<double, 4>([](const sctl_dx4 &x) { return x; })},
+    {"memcpy", sctl_apply<double, 4>([](const sctl_dx4 &x) { return x; })},
+    {"memset", sctl_apply<double, 4>([](const sctl_dx4 &x) -> sctl_dx4 { return (sctl_dx4::VData)Vec4d{0.0}; })},
     {"exp", sctl_apply<double, 4>([](const sctl_dx4 &x) { return sctl::approx_exp<16>(x); })},
     {"sin", sctl_apply<double, 4>([](const sctl_dx4 &x) {
          sctl_dx4 sinx, cosx;
@@ -40,7 +38,8 @@ std::unordered_map<std::string, multi_eval_func<double>> funs_dx4 = {
 
 #ifdef __AVX512F__
 std::unordered_map<std::string, multi_eval_func<float>> funs_fx16 = {
-    {"copy", sctl_apply<float, 16>([](const sctl_fx16 &x) { return x; })},
+    {"memcpy", sctl_apply<float, 16>([](const sctl_fx16 &x) { return x; })},
+    {"memset", sctl_apply<float, 16>([](const sctl_fx16 &x) -> sctl_fx16 { return (sctl_fx16::VData)Vec16f{0.0}; })},
     {"exp", sctl_apply<float, 16>([](const sctl_fx16 &x) { return sctl::approx_exp<7>(x); })},
     {"sin", sctl_apply<float, 16>([](const sctl_fx16 &x) {
          sctl_fx16 sinx, cosx;
@@ -56,7 +55,8 @@ std::unordered_map<std::string, multi_eval_func<float>> funs_fx16 = {
 };
 
 std::unordered_map<std::string, multi_eval_func<double>> funs_dx8 = {
-    {"copy", sctl_apply<double, 8>([](const sctl_dx8 &x) { return x; })},
+    {"memcpy", sctl_apply<double, 8>([](const sctl_dx8 &x) { return x; })},
+    {"memset", sctl_apply<double, 8>([](const sctl_dx8 &x) -> sctl_dx8 { return (sctl_dx8::VData)Vec8d{0.0}; })},
     {"exp", sctl_apply<double, 8>([](const sctl_dx8 &x) { return sctl::approx_exp<16>(x); })},
     {"sin", sctl_apply<double, 8>([](const sctl_dx8 &x) {
          sctl_dx8 sinx, cosx;
