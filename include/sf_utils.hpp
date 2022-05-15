@@ -35,6 +35,7 @@ struct host_info_t {
 struct library_info_t {
     int id;
     std::string name;
+    std::string longname;
     std::string version;
 };
 

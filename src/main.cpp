@@ -27,17 +27,12 @@ run_t run_info;
 sf::utils::toolchain_info_t toolchain_info;
 sf::utils::host_info_t host_info;
 std::unordered_map<std::string, sf::utils::library_info_t> libraries_info = {
-    {"agnerfog", {.name = "agnerfog", .version = sf::utils::get_af_version()}},
-    {"amdlibm", {.name = "amdlibm", .version = sf::utils::get_alm_version()}},
-    {"baobzi", {.name = "baobzi", .version = sf::utils::get_baobzi_version()}},
-    {"boost", {.name = "boost", .version = sf::utils::get_boost_version()}},
-    {"eigen", {.name = "eigen", .version = sf::utils::get_eigen_version()}},
-    {"gsl", {.name = "gsl", .version = sf::utils::get_gsl_version()}},
-    {"fort", {.name = "fort", .version = "NA"}},
-    {"misc", {.name = "misc", .version = "NA"}},
-    {"sctl", {.name = "sctl", .version = sf::utils::get_sctl_version()}},
-    {"sleef", {.name = "sleef", .version = sf::utils::get_sleef_version()}},
-    {"stl", {.name = "stl", .version = "NA"}},
+    {"agnerfog", sf::functions::af::library_info}, {"amdlibm", sf::functions::amd::library_info},
+    {"baobzi", sf::functions::amd::library_info},  {"boost", sf::functions::boost::library_info},
+    {"eigen", sf::functions::eigen::library_info}, {"gsl", sf::functions::gsl::library_info},
+    {"fort", sf::functions::fort::library_info},   {"misc", sf::functions::misc::library_info},
+    {"sctl", sf::functions::SCTL::library_info},   {"sleef", sf::functions::sleef::library_info},
+    {"stl", sf::functions::stl::library_info},
 };
 
 struct measurement_t {
