@@ -11,8 +11,8 @@ getting there.
   * baobzi: [Baobzi (adaptive fast function interpolator)](https://github.com/flatironinstitute/baobzi)
   * boost: [Boost (C++ general template library)](https://boost.org)
   * eigen: [Eigen (C++ matrix template library)](https://eigen.tuxfamily.org)
-  * gsl: [GNU Scientific Library](https://gnu.org/software/gsl)
   * fort: Fortran (Fortran apparently has bessel functions natively)
+  * gsl: [GNU Scientific Library](https://gnu.org/software/gsl)
   * misc: Miscellaneous source files from all over
   * sctl: [Scientific Computing Template Library](https://github.com/dmalhotra/SCTL)
   * sleef: [Sleef Vectoried Math Library](https://sleef.org)
