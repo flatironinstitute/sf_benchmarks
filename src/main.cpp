@@ -16,44 +16,16 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-struct run_t {
-    int id;
-    std::string time;
-    std::unique_ptr<int> host;
-    std::unique_ptr<int> toolchain;
-};
-
-run_t run_info;
-sf::utils::toolchain_info_t toolchain_info;
-sf::utils::host_info_t host_info;
-std::unordered_map<std::string, sf::utils::library_info_t> libraries_info = {
+run_info_t run_info;
+toolchain_info_t toolchain_info;
+host_info_t host_info;
+std::unordered_map<std::string, library_info_t> libraries_info = {
     {"agnerfog", sf::functions::af::library_info}, {"amdlibm", sf::functions::amd::library_info},
     {"baobzi", sf::functions::amd::library_info},  {"boost", sf::functions::boost::library_info},
     {"eigen", sf::functions::eigen::library_info}, {"gsl", sf::functions::gsl::library_info},
     {"fort", sf::functions::fort::library_info},   {"misc", sf::functions::misc::library_info},
     {"sctl", sf::functions::SCTL::library_info},   {"sleef", sf::functions::sleef::library_info},
     {"stl", sf::functions::stl::library_info},
-};
-
-struct measurement_t {
-    int id;
-    std::unique_ptr<int> run;
-    std::unique_ptr<int> library;
-    std::unique_ptr<int> configuration;
-    sf::utils::library_info_t library_copy;
-    configuration_t config_copy;
-    int nelem = 0;
-    int nrepeat = 0;
-    int veclev = 0;
-    double megaevalspersec = 0;
-    double cyclespereval = 0;
-    double meanevaltime = 0;
-    double stddev = 0;
-    double maxerr = 0;
-    double maxrelerr = 0;
-
-    explicit operator bool() const { return nrepeat; }
-    friend std::ostream &operator<<(std::ostream &, const measurement_t &);
 };
 
 std::ostream &operator<<(std::ostream &os, const measurement_t &meas) {
@@ -82,7 +54,7 @@ std::ostream &operator<<(std::ostream &os, const measurement_t &meas) {
     }
 
 template <typename VAL_T, typename FUN_T>
-measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &library_info, configuration_t &config,
+measurement_t test_func(const FUN_T &f, int veclev, library_info_t &library_info, configuration_t &config,
                         const Eigen::Ref<const Eigen::VectorX<VAL_T>> &x_in,
                         const Eigen::Ref<const Eigen::VectorXd> &y_ref, int n_repeat) {
     if (!f)
@@ -194,9 +166,6 @@ std::set<std::string> parse_args(int argc, char *argv[]) {
 
 inline auto init_storage(const std::string &path) {
     using namespace sqlite_orm;
-    using sf::utils::host_info_t;
-    using sf::utils::library_info_t;
-    using sf::utils::toolchain_info_t;
 
     auto storage = make_storage(
         "db.sqlite",
@@ -221,10 +190,11 @@ inline auto init_storage(const std::string &path) {
         make_table("libraries", make_column("id", &library_info_t::id, autoincrement(), primary_key()),
                    make_column("name", &library_info_t::name), make_column("version", &library_info_t::version),
                    sqlite_orm::unique(&library_info_t::name, &library_info_t::version)),
-        make_table("runs", make_column("id", &run_t::id, autoincrement(), primary_key()),
-                   make_column("time", &run_t::time), make_column("host", &run_t::host),
-                   make_column("toolchain", &run_t::toolchain), foreign_key(&run_t::host).references(&host_info_t::id),
-                   foreign_key(&run_t::toolchain).references(&toolchain_info_t::id)),
+        make_table("runs", make_column("id", &run_info_t::id, autoincrement(), primary_key()),
+                   make_column("time", &run_info_t::time), make_column("host", &run_info_t::host),
+                   make_column("toolchain", &run_info_t::toolchain),
+                   foreign_key(&run_info_t::host).references(&host_info_t::id),
+                   foreign_key(&run_info_t::toolchain).references(&toolchain_info_t::id)),
         make_table(
             "measurements", make_column("id", &measurement_t::id, autoincrement(), primary_key()),
             make_column("run", &measurement_t::run), make_column("library", &measurement_t::library),
@@ -234,7 +204,7 @@ inline auto init_storage(const std::string &path) {
             make_column("cyclespereval", &measurement_t::cyclespereval),
             make_column("meanevaltime", &measurement_t::meanevaltime), make_column("stddev", &measurement_t::stddev),
             make_column("maxrelerr", &measurement_t::maxrelerr), make_column("maxerr", &measurement_t::maxerr),
-            foreign_key(&measurement_t::run).references(&run_t::id),
+            foreign_key(&measurement_t::run).references(&run_info_t::id),
             foreign_key(&measurement_t::library).references(&library_info_t::id),
             foreign_key(&measurement_t::configuration).references(&configuration_t::id)));
 

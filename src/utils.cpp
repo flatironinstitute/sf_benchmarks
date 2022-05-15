@@ -3,24 +3,6 @@
 
 namespace sf::utils {
 
-host_info_t::host_info_t() {
-    cpuname = exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3");
-    L1d = exec("lscpu | grep L1d | awk '{print $3}'");
-    L1i = exec("lscpu | grep L1i | awk '{print $3}'");
-    L2 = exec("lscpu | grep L2 | awk '{print $3}'");
-    L3 = exec("lscpu | grep L3 | awk '{print $3}'");
-}
-
-toolchain_info_t::toolchain_info_t() {
-#ifdef __GNUC__
-    compiler = "gcc";
-    compilervers =
-        std::to_string(__GNUC__) + "." + std::to_string(__GNUC_MINOR__) + "." + std::to_string(__GNUC_PATCHLEVEL__);
-#endif
-
-    libcvers = gnu_get_libc_version();
-}
-
 std::string exec(const char *cmd) {
     // https://stackoverflow.com/a/478960
     std::array<char, 128> buffer;
