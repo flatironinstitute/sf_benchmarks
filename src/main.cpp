@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include <sys/mman.h>
+
 #include <sf_benchmarks.hpp>
 #include <sf_libraries.hpp>
 #include <sf_utils.hpp>
@@ -100,13 +102,9 @@ measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &l
         res_size *= 2;
 
     Eigen::VectorX<VAL_T> res(res_size);
-    // Force malloc to give us the entire array (rather than possibly delaying until the first write)
-    // Could also use mlock, which might be worth investigating, but won't be relevant to eigen
-    res.setOnes();
+    // Force virtual memory to RAM (to force malloc to do its thing)
+    mlock(res.data(), res_size * sizeof(VAL_T));
     VAL_T *resptr = res.data();
-
-    // Lazy attempt to evict cache
-    Eigen::VectorXd dummy = Eigen::VectorXd::Ones(2E7 / 8);
 
     sf::utils::timer timer;
 
@@ -185,6 +183,7 @@ measurement_t test_func(const FUN_T &f, int veclev, sf::utils::library_info_t &l
         meas.maxrelerr = -1.0;
     }
 
+    munlock(res.data(), res_size * sizeof(VAL_T));
     return meas;
 }
 #undef EIGEN_CASE
@@ -355,7 +354,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::pair<int, int>> run_sets;
     for (uint8_t shift = 0; shift <= 14; shift += 14)
-        run_sets.push_back({1 << (10 + shift), 1 << (14 - shift)});
+        run_sets.push_back({1 << (11 + shift), 1 << (14 - shift)});
 
     std::unordered_map<std::string, configuration_t> base_configurations = {
         {"acos", {.lbound = -1.0, .ubound = 1.0}},
