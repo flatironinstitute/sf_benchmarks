@@ -38,6 +38,7 @@ ExternalProject_Add(libbaobzi
 include_directories(
   ${CMAKE_BINARY_DIR}/contrib/include
   ${PROJECT_SOURCE_DIR}/extern/baobzi/extern/msgpack-c/include
+  ${PROJECT_SOURCE_DIR}/extern/baobzi/include
   ${PROJECT_SOURCE_DIR}/extern/SCTL/include
   ${PROJECT_SOURCE_DIR}/extern/eigen
   ${PROJECT_SOURCE_DIR}/extern/toml11
