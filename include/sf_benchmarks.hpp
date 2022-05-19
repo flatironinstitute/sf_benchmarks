@@ -114,7 +114,7 @@ std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> vec_func_map
 }
 
 template <class VAL_T, class F>
-std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> scalar_func_apply(const F &f) {
+std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> scalar_func_map(const F &f) {
     static const auto fn = [f](const VAL_T *RESTRICT vals, VAL_T *RESTRICT res, size_t N) {
         for (size_t i = 0; i < N; i += 1) {
             res[i] = f(vals[i]);
