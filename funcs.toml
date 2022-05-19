@@ -89,6 +89,10 @@ sqrt = "std::sqrt(x)"
 "pow3.5" = "std::pow(x, 3.5)"
 pow13 = "std::pow(x, 13)"
 
+[stl.overrides]
+memset = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memset(dst, 0, N * sizeof({stype})); }}"
+memcpy = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memset(dst, src, N * sizeof({stype})); }}"
+
 [af]
 types = ["float", "double"]
 instructions = ["avx2", "avx512"]
@@ -119,3 +123,5 @@ exp10 = "exp10(x)"
 sqrt = "sqrt(x)"
 "pow3.5" = "pow(x, 3.5)"
 pow13 = "pow(x, 13)"
+memcpy = "x"
+memset = "{vectype}{{0.0}}"

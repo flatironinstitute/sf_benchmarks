@@ -19,14 +19,14 @@ def get_veclevel(stype, iset):
 class Function:
     """hi."""
 
-    def __init__(self, calltemplate, implements, stype, veclevel, domain):
+    def __init__(self, calltemplate, implements, stype, veclevel, domain, override_template=False):
         """hi."""
         self.calltemplate: str = calltemplate
         self.implements: str = implements
         self.stype: str = stype
         self.veclevel = veclevel
         self.domain: List[float] = config.get('domain', [0.0, 1.0])
-
+        self.override_template: bool = override_template
 
     def __repr__(self):
         """Prints this object."""
@@ -34,14 +34,18 @@ class Function:
 
     def gen_map_elem(self):
         """Generates map, lambda expression pairs in C++ to call this function"""
-        if self.veclevel == 1:
-            template = """{{"{0}", scalar_func_map<{1}>([]({1} x) -> {1} {{ return {3}; }})}}"""
+        if self.override_template:
+            template = """{{"{func}", """ + self.calltemplate + "}}"
         else:
-            template = """{{"{0}", vec_func_map<{2}, {1}>([]({2} x) -> {2} {{ return {3}; }})}}"""
+            if self.veclevel == 1:
+                template = """{{"{func}", scalar_func_map<{stype}>([]({stype} x) -> {stype} {{ return """ + self.calltemplate + """; }})}}"""
+            else:
+                template = """{{"{func}", vec_func_map<{stype}, {vectype}>([]({vectype} x) -> {vectype} {{ return """ + self.calltemplate + """; }})}}"""
 
         vectype = "Vec{}{}".format(self.veclevel, self.stype[0])
 
-        map_elem = template.format(self.implements, self.stype, vectype, self.calltemplate)
+        map_elem = template.format(func=self.implements, stype=self.stype,
+                                   vectype=vectype)
         return map_elem
 
 
@@ -58,6 +62,14 @@ for lname, lconfig in config.items():
             veclevel = get_veclevel(stype, iset)
             mapname = "funs_{}x{}".format(stype[0], veclevel)
             func = Function(calltemplate, fname, stype, veclevel, domains.get(fname, [0.0, 1.0]))
+            funcs.append(func)
+
+    for fname, calltemplate in lconfig.get('overrides', {}).items():
+        for stype, iset in itertools.product(types, instructions):
+            veclevel = get_veclevel(stype, iset)
+            mapname = "funs_{}x{}".format(stype[0], veclevel)
+            func = Function(calltemplate, fname, stype, veclevel,
+                            domains.get(fname, [0.0, 1.0]), override_template=True)
             funcs.append(func)
 
 
