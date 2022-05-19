@@ -145,27 +145,27 @@ void load_functions() {
     };
 
     funs_dx4 = {
-        {"sin", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_sin(x); })},
-        {"cos", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_cos(x); })},
-        {"tan", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_tan(x); })},
-        {"log", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_log(x); })},
-        {"log2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_log2(x); })},
-        {"exp", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_exp(x); })},
-        {"exp2", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_exp2(x); })},
-        {"pow3.5", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{3.5}); })},
-        {"pow13", vec_func_apply<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{13}); })},
+        {"sin", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_sin(x); })},
+        {"cos", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_cos(x); })},
+        {"tan", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_tan(x); })},
+        {"log", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_log(x); })},
+        {"log2", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_log2(x); })},
+        {"exp", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_exp(x); })},
+        {"exp2", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_exp2(x); })},
+        {"pow3.5", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{3.5}); })},
+        {"pow13", vec_func_map<Vec4d, double>([](Vec4d x) -> Vec4d { return amd_vrd4_pow(x, Vec4d{13}); })},
     };
 
     funs_fx8 = {
-        {"sin", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_sinf(x); })},
-        {"cos", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_cosf(x); })},
-        {"tan", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_tanf(x); })},
-        {"log", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_logf(x); })},
-        {"log2", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_log2f(x); })},
-        {"exp", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_expf(x); })},
-        {"exp2", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_exp2f(x); })},
-        {"pow3.5", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_powf(x, Vec8f{3.5}); })},
-        {"pow13", vec_func_apply<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_powf(x, Vec8f{13}); })},
+        {"sin", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_sinf(x); })},
+        {"cos", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_cosf(x); })},
+        {"tan", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_tanf(x); })},
+        {"log", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_logf(x); })},
+        {"log2", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_log2f(x); })},
+        {"exp", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_expf(x); })},
+        {"exp2", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_exp2f(x); })},
+        {"pow3.5", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_powf(x, Vec8f{3.5}); })},
+        {"pow13", vec_func_map<Vec8f, float>([](Vec8f x) -> Vec8f { return amd_vrs8_powf(x, Vec8f{13}); })},
     };
 }
 

@@ -93,7 +93,7 @@ struct measurement_t {
 };
 
 template <class VAL_T, int VecLen, class F>
-std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> sctl_apply(const F &f) {
+std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> sctl_map(const F &f) {
     static const auto fn = [f](const VAL_T *RESTRICT vals, VAL_T *RESTRICT res, size_t N) {
         using Vec = sctl::Vec<VAL_T, VecLen>;
         for (size_t i = 0; i < N; i += VecLen) {
@@ -104,7 +104,7 @@ std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> sctl_apply(c
 }
 
 template <class VEC_T, class VAL_T, class F>
-std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> vec_func_apply(const F &f) {
+std::function<void(const VAL_T *RESTRICT, VAL_T *RESTRICT, size_t)> vec_func_map(const F &f) {
     static const auto fn = [f](const VAL_T *RESTRICT vals, VAL_T *RESTRICT res, size_t N) {
         for (size_t i = 0; i < N; i += VEC_T::size()) {
             f(VEC_T().load_a(vals + i)).store_a(res + i);
