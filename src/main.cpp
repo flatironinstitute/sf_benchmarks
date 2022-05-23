@@ -245,6 +245,10 @@ inline auto init_storage(const std::string &path) {
 
 using Storage = decltype(init_storage(""));
 
+bool operator==(const function_key &lhs, const function_key &rhs) {
+    return lhs.lib == rhs.lib && lhs.fun == rhs.fun && lhs.veclevel == rhs.veclevel;
+}
+
 int main(int argc, char *argv[]) {
     Storage storage = init_storage("db.sqlite");
 
@@ -253,6 +257,18 @@ int main(int argc, char *argv[]) {
     std::cout << "    libc: " + toolchain_info.libcvers << std::endl;
     for (auto &[key, lib] : libraries_info)
         std::cout << "    " + lib.name + ": " + lib.version << std::endl;
+
+    std::unordered_map<function_key, multi_eval_func<double>> dfuncs = {
+        {{"stl", "exp", 1}, scalar_func_map<double>([](double x) -> double { return std::exp(x); })},
+    };
+    dfuncs[{"eigen", "exp", 0}] = [](const double *src, double *dst, size_t N) {
+        Eigen::Map<Eigen::ArrayX<double>>(dst, N) = Eigen::Map<const Eigen::ArrayX<double>>(src, N).exp();
+    };
+
+    double x = 1.0, y = 0.0;
+    dfuncs[{"stl", "exp", 1}](&x, &y, 1);
+    dfuncs[{"eigen", "exp", 0}](&x, &y, 1);
+    std::cout << y << std::endl;
 
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 

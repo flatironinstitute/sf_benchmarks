@@ -19,6 +19,7 @@
 #include <vectormath_hyp.h>
 #include <vectormath_trig.h>
 
+
 #include <boost/version.hpp>
 #include <gnu/libc-version.h>
 #include <gsl/gsl_version.h>
@@ -109,8 +110,6 @@ namespace stl {
 static library_info_t library_info = {
     .name = "stl", .longname = "C++ Standard Library implementation", .version = "NA"};
 
-std::unordered_map<::std::string, func_implementation<float>> &get_funs_f();
-std::unordered_map<::std::string, func_implementation<float>> &get_funs_d();
 std::unordered_map<::std::string, multi_eval_func<float>> &get_funs_fx1();
 std::unordered_map<::std::string, multi_eval_func<double>> &get_funs_dx1();
 } // namespace stl

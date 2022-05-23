@@ -45,7 +45,7 @@ memcpy = [0.0, 1.0]
 memset = [0.0, 1.0]
 ndtri = [0.0, 1.0]
 pow13 = [0.0, 1.0]
-pow3.5 = [0.0, 1.0]
+"pow3.5" = [0.0, 1.0]
 riemann_zeta = [0.0, 10.0]
 rsqrt = [0.0, 10.0]
 sin = [0.0, 6.283]
@@ -140,7 +140,7 @@ tanh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::Arra
 exp = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
 log = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
 log10 = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
-pow35 = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).pow(3.5); }}"
+"pow3.5" = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).pow(3.5); }}"
 pow13 = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).pow(13); }}"
 asin = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
 acos = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"

@@ -1,6 +1,7 @@
 #ifndef SF_BENCHMARKS_HPP
 #define SF_BENCHMARKS_HPP
 
+#include <boost/container_hash/hash.hpp>
 #include <complex>
 #include <functional>
 #include <memory>
@@ -25,6 +26,29 @@ typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 
 template <class VAL_T>
 using multi_eval_func = std::function<void(const VAL_T *, VAL_T *, size_t)>;
+
+struct function_key {
+    std::string lib;
+    std::string fun;
+    int veclevel;
+};
+
+template <>
+struct std::hash<function_key> {
+    std::size_t operator()(function_key const& k) const noexcept
+    {
+        std::size_t h1 = std::hash<std::string>{}(k.lib);
+        std::size_t h2 = std::hash<std::string>{}(k.fun);
+        std::size_t h3 = std::hash<int>{}(k.veclevel);
+
+        std::size_t seed = 0;
+        boost::hash_combine(seed, h1);
+        boost::hash_combine(seed, h2);
+        boost::hash_combine(seed, h3);
+
+        return seed;
+    }
+};
 
 // https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
 namespace sf::functions::eigen {
@@ -55,14 +79,6 @@ enum OPS {
     rsqrt
 };
 } // namespace sf::functions::eigen
-
-template <typename VAL_T>
-struct func_implementation {
-    const int veclevel = 1;
-    const multi_eval_func<VAL_T> f;
-
-    void operator()(const VAL_T *src, VAL_T *dst, size_t N) { f(src, dst, N); }
-};
 
 struct run_info_t {
     int id;

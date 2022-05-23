@@ -2,77 +2,6 @@
 #include <unordered_map>
 
 namespace sf::functions::stl {
-std::unordered_map<std::string, func_implementation<float>> ffuns = {
-    {"memcpy", {1, [](const float *src, float *dst, size_t N) { std::memcpy(dst, src, N * sizeof(float)); }}},
-    {"memset", {1, [](const float *src, float *dst, size_t N) { std::memset(dst, 0, N * sizeof(float)); }}},
-    {"tgamma", {1, scalar_func_map<float>([](float x) -> float { return std::tgamma(x); })}},
-    {"lgamma", {1, scalar_func_map<float>([](float x) -> float { return std::lgamma(x); })}},
-    {"sin", {1, scalar_func_map<float>([](float x) -> float { return std::sin(x); })}},
-    {"cos", {1, scalar_func_map<float>([](float x) -> float { return std::cos(x); })}},
-    {"tan", {1, scalar_func_map<float>([](float x) -> float { return std::tan(x); })}},
-    {"asin", {1, scalar_func_map<float>([](float x) -> float { return std::asin(x); })}},
-    {"acos", {1, scalar_func_map<float>([](float x) -> float { return std::acos(x); })}},
-    {"atan", {1, scalar_func_map<float>([](float x) -> float { return std::atan(x); })}},
-    {"asin", {1, scalar_func_map<float>([](float x) -> float { return std::asin(x); })}},
-    {"acos", {1, scalar_func_map<float>([](float x) -> float { return std::acos(x); })}},
-    {"atan", {1, scalar_func_map<float>([](float x) -> float { return std::atan(x); })}},
-    {"sinh", {1, scalar_func_map<float>([](float x) -> float { return std::sinh(x); })}},
-    {"cosh", {1, scalar_func_map<float>([](float x) -> float { return std::cosh(x); })}},
-    {"tanh", {1, scalar_func_map<float>([](float x) -> float { return std::tanh(x); })}},
-    {"asinh", {1, scalar_func_map<float>([](float x) -> float { return std::asinh(x); })}},
-    {"acosh", {1, scalar_func_map<float>([](float x) -> float { return std::acosh(x); })}},
-    {"atanh", {1, scalar_func_map<float>([](float x) -> float { return std::atanh(x); })}},
-    {"sin_pi", {1, scalar_func_map<float>([](float x) -> float { return std::sin(M_PI * x); })}},
-    {"cos_pi", {1, scalar_func_map<float>([](float x) -> float { return std::cos(M_PI * x); })}},
-    {"erf", {1, scalar_func_map<float>([](float x) -> float { return std::erf(x); })}},
-    {"erfc", {1, scalar_func_map<float>([](float x) -> float { return std::erfc(x); })}},
-    {"log", {1, scalar_func_map<float>([](float x) -> float { return std::log(x); })}},
-    {"log2", {1, scalar_func_map<float>([](float x) -> float { return std::log2(x); })}},
-    {"log10", {1, scalar_func_map<float>([](float x) -> float { return std::log10(x); })}},
-    {"exp", {1, scalar_func_map<float>([](float x) -> float { return std::exp(x); })}},
-    {"exp2", {1, scalar_func_map<float>([](float x) -> float { return std::exp2(x); })}},
-    {"exp10", {1, scalar_func_map<float>([](float x) -> float { return exp10(x); })}},
-    {"sqrt", {1, scalar_func_map<float>([](float x) -> float { return std::sqrt(x); })}},
-    {"rsqrt", {1, scalar_func_map<float>([](float x) -> float { return 1.0 / std::sqrt(x); })}},
-    {"pow3.5", {1, scalar_func_map<float>([](float x) -> float { return std::pow(x, 3.5); })}},
-    {"pow13", {1, scalar_func_map<float>([](float x) -> float { return std::pow(x, 13); })}},
-};
-
-std::unordered_map<std::string, func_implementation<double>> dfuns = {
-    {"memcpy", {1, [](const double *src, double *dst, size_t N) { std::memcpy(dst, src, N * sizeof(double)); }}},
-    {"memset", {1, [](const double *src, double *dst, size_t N) { std::memset(dst, 0, N * sizeof(double)); }}},
-    {"tgamma", {1, scalar_func_map<double>([](double x) -> double { return std::tgamma(x); })}},
-    {"lgamma", {1, scalar_func_map<double>([](double x) -> double { return std::lgamma(x); })}},
-    {"sin", {1, scalar_func_map<double>([](double x) -> double { return std::sin(x); })}},
-    {"cos", {1, scalar_func_map<double>([](double x) -> double { return std::cos(x); })}},
-    {"tan", {1, scalar_func_map<double>([](double x) -> double { return std::tan(x); })}},
-    {"asin", {1, scalar_func_map<double>([](double x) -> double { return std::asin(x); })}},
-    {"acos", {1, scalar_func_map<double>([](double x) -> double { return std::acos(x); })}},
-    {"atan", {1, scalar_func_map<double>([](double x) -> double { return std::atan(x); })}},
-    {"asin", {1, scalar_func_map<double>([](double x) -> double { return std::asin(x); })}},
-    {"acos", {1, scalar_func_map<double>([](double x) -> double { return std::acos(x); })}},
-    {"atan", {1, scalar_func_map<double>([](double x) -> double { return std::atan(x); })}},
-    {"sinh", {1, scalar_func_map<double>([](double x) -> double { return std::sinh(x); })}},
-    {"cosh", {1, scalar_func_map<double>([](double x) -> double { return std::cosh(x); })}},
-    {"tanh", {1, scalar_func_map<double>([](double x) -> double { return std::tanh(x); })}},
-    {"asinh", {1, scalar_func_map<double>([](double x) -> double { return std::asinh(x); })}},
-    {"acosh", {1, scalar_func_map<double>([](double x) -> double { return std::acosh(x); })}},
-    {"atanh", {1, scalar_func_map<double>([](double x) -> double { return std::atanh(x); })}},
-    {"sin_pi", {1, scalar_func_map<double>([](double x) -> double { return std::sin(M_PI * x); })}},
-    {"cos_pi", {1, scalar_func_map<double>([](double x) -> double { return std::cos(M_PI * x); })}},
-    {"erf", {1, scalar_func_map<double>([](double x) -> double { return std::erf(x); })}},
-    {"erfc", {1, scalar_func_map<double>([](double x) -> double { return std::erfc(x); })}},
-    {"log", {1, scalar_func_map<double>([](double x) -> double { return std::log(x); })}},
-    {"log2", {1, scalar_func_map<double>([](double x) -> double { return std::log2(x); })}},
-    {"log10", {1, scalar_func_map<double>([](double x) -> double { return std::log10(x); })}},
-    {"exp", {1, scalar_func_map<double>([](double x) -> double { return std::exp(x); })}},
-    {"exp2", {1, scalar_func_map<double>([](double x) -> double { return std::exp2(x); })}},
-    {"exp10", {1, scalar_func_map<double>([](double x) -> double { return exp10(x); })}},
-    {"sqrt", {1, scalar_func_map<double>([](double x) -> double { return std::sqrt(x); })}},
-    {"rsqrt", {1, scalar_func_map<double>([](double x) -> double { return 1.0 / std::sqrt(x); })}},
-    {"pow3.5", {1, scalar_func_map<double>([](double x) -> double { return std::pow(x, 3.5); })}},
-    {"pow13", {1, scalar_func_map<double>([](double x) -> double { return std::pow(x, 13); })}},
-};
 
 std::unordered_map<std::string, multi_eval_func<float>> funs_fx1 = {
     {"memcpy", [](const float *src, float *dst, size_t N) { std::memcpy(dst, src, N * sizeof(float)); }},
@@ -146,8 +75,6 @@ std::unordered_map<std::string, multi_eval_func<double>> funs_dx1 = {
     {"pow13", scalar_func_map<double>([](double x) -> double { return std::pow(x, 13); })},
 };
 
-std::unordered_map<std::string, func_implementation<float>> &get_ffuns() { return ffuns; }
-std::unordered_map<std::string, func_implementation<double>> &get_dfuns() { return dfuns; }
 std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1() { return funs_fx1; }
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1() { return funs_dx1; }
 } // namespace sf::functions::stl
