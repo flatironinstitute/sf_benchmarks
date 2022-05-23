@@ -6,11 +6,13 @@
 #include <memory>
 #include <sctl.hpp>
 #include <sys/cdefs.h>
+#include <type_traits>
+#include <variant>
 #include <vectorclass.h>
 
 // Attempt to force non-aliased pointers actually seems to slow things down...
-//#define RESTRICT __restrict
-#define RESTRICT
+#define RESTRICT __restrict
+//#define RESTRICT
 
 typedef std::complex<double> cdouble;
 typedef sctl::Vec<double, 4> sctl_dx4;
@@ -23,6 +25,44 @@ typedef std::function<std::pair<cdouble, cdouble>(cdouble)> fun_cdx1_x2;
 
 template <class VAL_T>
 using multi_eval_func = std::function<void(const VAL_T *, VAL_T *, size_t)>;
+
+// https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
+namespace sf::functions::eigen {
+enum OPS {
+    cos,
+    sin,
+    tan,
+    cosh,
+    sinh,
+    tanh,
+    exp,
+    log,
+    log10,
+    pow35,
+    pow13,
+    asin,
+    acos,
+    atan,
+    asinh,
+    acosh,
+    atanh,
+    erf,
+    erfc,
+    lgamma,
+    digamma,
+    ndtri,
+    sqrt,
+    rsqrt
+};
+} // namespace sf::functions::eigen
+
+template <typename VAL_T>
+struct func_implementation {
+    const int veclevel = 1;
+    const multi_eval_func<VAL_T> f;
+
+    void operator()(const VAL_T *src, VAL_T *dst, size_t N) { f(src, dst, N); }
+};
 
 struct run_info_t {
     int id;

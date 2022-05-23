@@ -125,3 +125,33 @@ sqrt = "sqrt(x)"
 pow13 = "pow(x, 13)"
 memcpy = "x"
 memset = "{vectype}{{0.0}}"
+
+[eigen]
+types = ["float", "double"]
+instructions = ["unknown"]
+
+[eigen.overrides]
+cos = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+sin = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+tan = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+cosh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+sinh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+tanh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+exp = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+log = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+log10 = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+pow35 = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).pow(3.5); }}"
+pow13 = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).pow(13); }}"
+asin = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+acos = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+atan = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+asinh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+acosh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+atanh = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+erf = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+erfc = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+lgamma = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+digamma = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+ndtri = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+sqrt = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"
+rsqrt = "[](const {stype} *src, {stype} *dst, size_t N) {{ Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N) = Eigen::Map<Eigen::ArrayX<{stype}>>(dst, N).{func}(); }}"

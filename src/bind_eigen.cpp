@@ -1,4 +1,6 @@
 #include <sf_libraries.hpp>
+#include <string>
+#include <unordered_map>
 
 namespace sf::functions::eigen {
 std::unordered_map<std::string, OPS> funs = {

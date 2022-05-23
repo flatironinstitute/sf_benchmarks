@@ -52,50 +52,19 @@ std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx4();
 } // namespace amd
 
 namespace baobzi {
-static library_info_t library_info = {
-    .name = "baobzi", .longname = "Baobzi", .version = utils::get_baobzi_version()};
+static library_info_t library_info = {.name = "baobzi", .longname = "Baobzi", .version = utils::get_baobzi_version()};
 std::unordered_map<std::string, std::shared_ptr<::baobzi::Baobzi>> &
 get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string, configuration_t> &configs);
 } // namespace baobzi
 
 namespace boost {
-static library_info_t library_info = {
-    .name = "boost", .longname = "Boost", .version = utils::get_baobzi_version()};
+static library_info_t library_info = {.name = "boost", .longname = "Boost", .version = utils::get_baobzi_version()};
 std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
 } // namespace boost
 
-// https://eigen.tuxfamily.org/dox/group__CoeffwiseMathFunctions.html
 namespace eigen {
-static library_info_t library_info = {
-    .name = "eigen", .longname = "Eigen", .version = utils::get_eigen_version()};
-enum OPS {
-    cos,
-    sin,
-    tan,
-    cosh,
-    sinh,
-    tanh,
-    exp,
-    log,
-    log10,
-    pow35,
-    pow13,
-    asin,
-    acos,
-    atan,
-    asinh,
-    acosh,
-    atanh,
-    erf,
-    erfc,
-    lgamma,
-    digamma,
-    ndtri,
-    sqrt,
-    rsqrt
-};
-
+static library_info_t library_info = {.name = "eigen", .longname = "Eigen", .version = utils::get_eigen_version()};
 std::unordered_map<std::string, OPS> &get_funs();
 } // namespace eigen
 
@@ -139,6 +108,9 @@ std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx8();
 namespace stl {
 static library_info_t library_info = {
     .name = "stl", .longname = "C++ Standard Library implementation", .version = "NA"};
+
+std::unordered_map<::std::string, func_implementation<float>> &get_funs_f();
+std::unordered_map<::std::string, func_implementation<float>> &get_funs_d();
 std::unordered_map<::std::string, multi_eval_func<float>> &get_funs_fx1();
 std::unordered_map<::std::string, multi_eval_func<double>> &get_funs_dx1();
 } // namespace stl
