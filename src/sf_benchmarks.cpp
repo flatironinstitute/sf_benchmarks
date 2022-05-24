@@ -4,6 +4,10 @@
 #include <gnu/libc-version.h>
 #include <unistd.h>
 
+bool operator==(const function_key &lhs, const function_key &rhs) {
+    return lhs.lib == rhs.lib && lhs.fun == rhs.fun && lhs.veclevel == rhs.veclevel;
+}
+
 host_info_t::host_info_t() {
     cpuname = sf::utils::exec("grep -m1 'model name' /proc/cpuinfo | cut -d' ' --complement -f1-3");
     L1d = std::to_string(sysconf(_SC_LEVEL1_DCACHE_SIZE));

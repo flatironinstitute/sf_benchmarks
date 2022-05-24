@@ -245,10 +245,6 @@ inline auto init_storage(const std::string &path) {
 
 using Storage = decltype(init_storage(""));
 
-bool operator==(const function_key &lhs, const function_key &rhs) {
-    return lhs.lib == rhs.lib && lhs.fun == rhs.fun && lhs.veclevel == rhs.veclevel;
-}
-
 int main(int argc, char *argv[]) {
     Storage storage = init_storage("db.sqlite");
 
@@ -257,18 +253,6 @@ int main(int argc, char *argv[]) {
     std::cout << "    libc: " + toolchain_info.libcvers << std::endl;
     for (auto &[key, lib] : libraries_info)
         std::cout << "    " + lib.name + ": " + lib.version << std::endl;
-
-    std::unordered_map<function_key, multi_eval_func<double>> dfuncs = {
-        {{"stl", "exp", 1}, scalar_func_map<double>([](double x) -> double { return std::exp(x); })},
-    };
-    dfuncs[{"eigen", "exp", 0}] = [](const double *src, double *dst, size_t N) {
-        Eigen::Map<Eigen::ArrayX<double>>(dst, N) = Eigen::Map<const Eigen::ArrayX<double>>(src, N).exp();
-    };
-
-    double x = 1.0, y = 0.0;
-    dfuncs[{"stl", "exp", 1}](&x, &y, 1);
-    dfuncs[{"eigen", "exp", 0}](&x, &y, 1);
-    std::cout << y << std::endl;
 
     std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
 
@@ -326,12 +310,12 @@ int main(int argc, char *argv[]) {
     merge_into_set(stl_funs_fx1);
 #undef merge_into_set
 
-    std::set<std::string> keys_to_eval;
+    std::set<std::string> funcs_to_eval;
     if (input_keys.size() > 0)
         std::set_intersection(fun_union.begin(), fun_union.end(), input_keys.begin(), input_keys.end(),
-                              std::inserter(keys_to_eval, keys_to_eval.end()));
+                              std::inserter(funcs_to_eval, funcs_to_eval.end()));
     else
-        keys_to_eval = fun_union;
+        funcs_to_eval = fun_union;
 
     std::vector<std::pair<int, int>> run_sets;
     for (uint8_t shift = 0; shift <= 14; shift += 14)
@@ -456,10 +440,10 @@ int main(int argc, char *argv[]) {
         {"tgamma", stl_funs_dx1["tgamma"]},
     };
 
-    for (auto key : keys_to_eval)
+    for (auto key : funcs_to_eval)
         std::cout << key << std::endl;
 
-    auto &baobzi_funs = sf::functions::baobzi::get_funs_dx1(keys_to_eval, base_configurations);
+    auto &baobzi_funs = sf::functions::baobzi::get_funs_dx1(funcs_to_eval, base_configurations);
 
     for (auto &run_set : run_sets) {
         const auto &[n_eval, n_repeat] = run_set;
@@ -468,12 +452,7 @@ int main(int argc, char *argv[]) {
         Eigen::VectorXf fvals = vals.cast<float>();
         Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(n_eval) + std::complex<double>{1.0, 1.0});
 
-        for (auto key : keys_to_eval) {
-            auto insert_measurement = [&storage](measurement_t &meas) -> void {
-                if (meas)
-                    storage.insert(meas);
-            };
-
+        for (auto fname : funcs_to_eval) {
             auto get_conf_data = [&storage, &base_configurations](const std::string &name,
                                                                   const std::string &ftype) -> configuration_t {
                 configuration_t config = base_configurations[name];
@@ -492,48 +471,48 @@ int main(int argc, char *argv[]) {
                 return config;
             };
 
-            Eigen::VectorXd vals_ref = sf::utils::transform_domain<double>(vals, base_configurations[key].lbound,
-                                                                           base_configurations[key].ubound);
+            Eigen::VectorXd vals_ref = sf::utils::transform_domain<double>(vals, base_configurations[fname].lbound,
+                                                                           base_configurations[fname].ubound);
 
             Eigen::VectorXd dref;
-            if (double_refs.count(key)) {
+            if (double_refs.count(fname)) {
                 dref.resize(vals_ref.size());
-                double_refs[key](vals_ref.data(), dref.data(), vals_ref.size());
+                double_refs[fname](vals_ref.data(), dref.data(), vals_ref.size());
             }
 
             std::vector<measurement_t> ms;
             auto &libs = libraries_info;
 
-            auto conf_f = get_conf_data(key, "f");
-            ms.push_back(test_func<float>(amdlibm_funs_fx1[key], 1, libs["amdlibm"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(amdlibm_funs_fx8[key], 8, libs["amdlibm"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(af_funs_fx8[key], 8, libs["agnerfog"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(af_funs_fx16[key], 16, libs["agnerfog"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(boost_funs_fx1[key], 1, libs["boost"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(eigen_funs[key], 0, libs["eigen"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sleef_funs_fx1[key], 1, libs["sleef"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sleef_funs_fx8[key], 8, libs["sleef"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sleef_funs_fx16[key], 16, libs["sleef"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sctl_funs_fx8[key], 8, libs["sctl"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(sctl_funs_fx16[key], 16, libs["sctl"], conf_f, fvals, dref, n_repeat));
-            ms.push_back(test_func<float>(stl_funs_fx1[key], 1, libs["stl"], conf_f, fvals, dref, n_repeat));
+            auto conf_f = get_conf_data(fname, "f");
+            ms.push_back(test_func<float>(amdlibm_funs_fx1[fname], 1, libs["amdlibm"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(amdlibm_funs_fx8[fname], 8, libs["amdlibm"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(af_funs_fx8[fname], 8, libs["agnerfog"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(af_funs_fx16[fname], 16, libs["agnerfog"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(boost_funs_fx1[fname], 1, libs["boost"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(eigen_funs[fname], 0, libs["eigen"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx1[fname], 1, libs["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx8[fname], 8, libs["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sleef_funs_fx16[fname], 16, libs["sleef"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sctl_funs_fx8[fname], 8, libs["sctl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(sctl_funs_fx16[fname], 16, libs["sctl"], conf_f, fvals, dref, n_repeat));
+            ms.push_back(test_func<float>(stl_funs_fx1[fname], 1, libs["stl"], conf_f, fvals, dref, n_repeat));
 
-            auto conf_d = get_conf_data(key, "d");
-            ms.push_back(test_func<double>(af_funs_dx4[key], 4, libs["agnerfog"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(af_funs_dx8[key], 8, libs["agnerfog"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(amdlibm_funs_dx1[key], 1, libs["amdlibm"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(amdlibm_funs_dx4[key], 4, libs["amdlibm"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(baobzi_funs[key], 1, libs["baobzi"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(boost_funs_dx1[key], 1, libs["boost"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(eigen_funs[key], 0, libs["eigen"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(fort_funs[key], 1, libs["fort"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(gsl_funs[key], 1, libs["gsl"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sctl_funs_dx4[key], 4, libs["sctl"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sctl_funs_dx8[key], 8, libs["sctl"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sleef_funs_dx1[key], 1, libs["sleef"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sleef_funs_dx4[key], 4, libs["sleef"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(sleef_funs_dx8[key], 8, libs["sleef"], conf_d, vals, dref, n_repeat));
-            ms.push_back(test_func<double>(stl_funs_dx1[key], 1, libs["stl"], conf_d, vals, dref, n_repeat));
+            auto conf_d = get_conf_data(fname, "d");
+            ms.push_back(test_func<double>(af_funs_dx4[fname], 4, libs["agnerfog"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(af_funs_dx8[fname], 8, libs["agnerfog"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(amdlibm_funs_dx1[fname], 1, libs["amdlibm"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(amdlibm_funs_dx4[fname], 4, libs["amdlibm"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(baobzi_funs[fname], 1, libs["baobzi"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(boost_funs_dx1[fname], 1, libs["boost"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(eigen_funs[fname], 0, libs["eigen"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(fort_funs[fname], 1, libs["fort"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(gsl_funs[fname], 1, libs["gsl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sctl_funs_dx4[fname], 4, libs["sctl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sctl_funs_dx8[fname], 8, libs["sctl"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx1[fname], 1, libs["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx4[fname], 4, libs["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(sleef_funs_dx8[fname], 8, libs["sleef"], conf_d, vals, dref, n_repeat));
+            ms.push_back(test_func<double>(stl_funs_dx1[fname], 1, libs["stl"], conf_d, vals, dref, n_repeat));
 
             for (auto &meas : ms) {
                 if (!meas)
