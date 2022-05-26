@@ -84,14 +84,14 @@ log2 = "std::log2(x)"
 log10 = "std::log10(x)"
 exp = "std::exp(x)"
 exp2 = "std::exp2(x)"
-exp10 = "std::exp10(x)"
+exp10 = "exp10(x)"
 sqrt = "std::sqrt(x)"
 "pow3.5" = "std::pow(x, 3.5)"
 pow13 = "std::pow(x, 13)"
 
 [stl.overrides]
 memset = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memset(dst, 0, N * sizeof({stype})); }}"
-memcpy = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memset(dst, src, N * sizeof({stype})); }}"
+memcpy = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memcpy(dst, src, N * sizeof({stype})); }}"
 
 [af]
 types = ["float", "double"]
@@ -110,10 +110,6 @@ tanh = "tanh(x)"
 asinh = "asinh(x)"
 acosh = "acosh(x)"
 atanh = "atanh(x)"
-tgamma = "tgamma(x)"
-lgamma = "lgamma(x)"
-erf = "erf(x)"
-erfc = "erfc(x)"
 log = "log(x)"
 log2 = "log2(x)"
 log10 = "log10(x)"

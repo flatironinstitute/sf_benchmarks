@@ -43,9 +43,9 @@ class Function:
             template = """{{{{"{lname}", "{func}", {veclevel} }}, """ + self.calltemplate + "}}"
         else:
             if self.veclevel == 1:
-                template = """{{ {{"{lname}", "{func}", {veclevel} }}, scalar_func_map<{stype}>([]({stype} x) -> {stype} {{ return """ + self.calltemplate + """; }})}}"""
+                template = """{{{{"{lname}", "{func}", {veclevel} }}, scalar_func_map<{stype}>([]({stype} x) -> {stype} {{ return """ + self.calltemplate + """; }})}}"""
             else:
-                template = """{{ {{"{lname}", "{func}", {veclevel} }}, vec_func_map<{stype}, {vectype}>([]({vectype} x) -> {vectype} {{ return """ + self.calltemplate + """; }})}}"""
+                template = """{{{{"{lname}", "{func}", {veclevel} }}, vec_func_map<{vectype}, {stype}>([]({vectype} x) -> {vectype} {{ return """ + self.calltemplate + """; }})}}"""
 
         vectype = "Vec{}{}".format(self.veclevel, self.stype[0])
 
@@ -57,7 +57,7 @@ class Function:
 config = toml.load("funcs.toml")
 domains = config.pop('domains')
 
-funcs = []
+funcs = {}
 fnames = set()
 lnames = set()
 fdnames = set()
@@ -78,7 +78,11 @@ for lname, lconfig in config.items():
             mapname = "funs_{}x{}".format(stype[0], veclevel)
             func = Function(lname, calltemplate, fname, stype, veclevel,
                             domains.get(fname, [0.0, 1.0]))
-            funcs.append(func)
+            mapkey = "funcs_" + stype
+            if mapkey not in funcs:
+                funcs[mapkey] = [func]
+            else:
+                funcs[mapkey].append(func)
 
     for fname, calltemplate in lconfig.get('overrides', {}).items():
         fnames.add(fname)
@@ -88,11 +92,17 @@ for lname, lconfig in config.items():
             func = Function(lname, calltemplate, fname, stype, veclevel,
                             domains.get(fname, [0.0, 1.0]),
                             override_template=True)
-            funcs.append(func)
+            mapkey = "funcs_" + stype
+            if mapkey not in funcs:
+                funcs[mapkey] = [func]
+            else:
+                funcs[mapkey].append(func)
 
 
-for func in funcs:
-    print(func.gen_map_elem())
+for mapname, funcl in funcs.items():
+    print("std::unordered_map<function_key, multi_eval_func<{}>> {} = {{".format(funcl[0].stype, mapname))
+    print(",\n".join([func.gen_map_elem() for func in funcl]))
+    print("};\n")
 
 print(lnames)
 print(fnames)

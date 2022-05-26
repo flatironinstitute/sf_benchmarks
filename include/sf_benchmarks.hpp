@@ -32,6 +32,7 @@ struct function_key {
     std::string fun;
     int veclevel;
 };
+bool operator==(const function_key &lhs, const function_key &rhs);
 
 template <>
 struct std::hash<function_key> {
