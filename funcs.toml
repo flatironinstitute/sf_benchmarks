@@ -93,11 +93,11 @@ pow13 = "std::pow(x, 13)"
 memset = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memset(dst, 0, N * sizeof({stype})); }}"
 memcpy = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memcpy(dst, src, N * sizeof({stype})); }}"
 
-[af]
+[agnerfog]
 types = ["float", "double"]
 instructions = ["avx2", "avx512"]
 
-[af.calltemplates]
+[agnerfog.calltemplates]
 sin = "sin(x)"
 cos = "cos(x)"
 tan = "tan(x)"

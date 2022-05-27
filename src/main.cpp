@@ -15,6 +15,7 @@
 #include <sf_utils.hpp>
 
 #include <sqlite_orm/sqlite_orm.h>
+#include <toml.hpp>
 
 run_info_t run_info;
 toolchain_info_t toolchain_info;
@@ -155,6 +156,63 @@ measurement_t test_func(const FUN_T &f, int veclev, library_info_t &library_info
 }
 #undef EIGEN_CASE
 
+template <typename VAL_T, typename FUN_T>
+measurement_t test_func_new(const FUN_T &f, int veclev, library_info_t &library_info, configuration_t &config,
+                            const Eigen::Ref<const Eigen::VectorX<VAL_T>> &x_in,
+                            const Eigen::Ref<const Eigen::VectorXd> &y_ref, int n_repeat) {
+    const std::string label = library_info.name + "_" + config.func;
+
+    Eigen::VectorX<VAL_T> x = sf::utils::transform_domain<VAL_T>(x_in, config.lbound, config.ubound);
+
+    size_t res_size = x.size();
+    size_t n_evals = x.size() * n_repeat;
+    if constexpr (std::is_same_v<FUN_T, fun_cdx1_x2>)
+        res_size *= 2;
+
+    Eigen::VectorX<VAL_T> res(res_size);
+    // Force virtual memory to RAM (to force malloc to do its thing)
+    mlock(res.data(), res_size * sizeof(VAL_T));
+    VAL_T *resptr = res.data();
+
+    sf::utils::timer timer;
+    for (long k = 0; k < n_repeat; k++)
+        f(x.data(), resptr, x.size());
+    timer.stop();
+
+    measurement_t meas;
+    meas.config_copy = config;
+    meas.library_copy = library_info;
+
+    meas.run = std::make_unique<int>(run_info.id);
+    meas.configuration = std::make_unique<int>(config.id);
+    meas.library = std::make_unique<int>(library_info.id);
+    meas.nelem = x.size();
+    meas.nrepeat = n_repeat;
+    meas.cyclespereval = timer.ticks_elapsed() / (double)n_evals;
+    meas.megaevalspersec = n_evals / timer.elapsed() / 1E6;
+    meas.meanevaltime = timer.elapsed() / n_evals / 1E-9;
+    meas.veclev = veclev;
+
+    if (y_ref.size() && (std::is_same_v<VAL_T, float> || std::is_same_v<VAL_T, double>)) {
+        Eigen::VectorXd delta = res.template cast<double>() - y_ref;
+        meas.maxerr = delta.array().abs().maxCoeff();
+        meas.maxrelerr = (delta.array().abs() / y_ref.array().abs()).maxCoeff();
+        meas.stddev = std::sqrt((delta.array() - delta.mean()).square().sum() / (delta.size() - 1));
+
+        meas.maxerr = std::isnan(meas.maxerr) ? -2.0 : meas.maxerr;
+        meas.maxrelerr = std::isnan(meas.maxrelerr) ? -2.0 : meas.maxrelerr;
+        meas.stddev = std::isnan(meas.stddev) ? -2.0 : meas.stddev;
+    } else {
+        meas.stddev = -1.0;
+        meas.maxerr = -1.0;
+        meas.maxrelerr = -1.0;
+    }
+
+    munlock(res.data(), res_size * sizeof(VAL_T));
+    return meas;
+}
+#undef EIGEN_CASE
+
 std::set<std::string> parse_args(int argc, char *argv[]) {
     // lol: "parse"
     std::set<std::string> res;
@@ -217,7 +275,8 @@ inline auto init_storage(const std::string &path) {
 
     storage.sync_schema();
 
-    set_id(storage.select(columns(&host_info_t::id), where(is_equal(&host_info_t::cpuname, host_info.cpuname))), host_info);
+    set_id(storage.select(columns(&host_info_t::id), where(is_equal(&host_info_t::cpuname, host_info.cpuname))),
+           host_info);
     set_id(storage.select(columns(&toolchain_info_t::id),
                           where(is_equal(&toolchain_info_t::compiler, toolchain_info.compiler) and
                                 is_equal(&toolchain_info_t::compilervers, toolchain_info.compilervers) and
@@ -272,15 +331,69 @@ int new_main(int argc, char *argv[], Storage &storage) {
     for (uint8_t shift = 0; shift <= 14; shift += 14)
         run_sets.push_back({1 << (11 + shift), 1 << (14 - shift)});
 
-    for (const auto &func : funcs_to_eval) {
-        for (const auto &lib : libs) {
-            for (const auto &veclevel : veclevels) {
-                if (float_funs.count({.lib = lib, .fun = func, .veclevel = veclevel}))
-                    std::cout << func + " " + lib + " " + std::to_string(veclevel) + "\n";
+    auto config_data = toml::parse("../funcs.toml");
+    auto domains = toml::find<std::unordered_map<std::string, std::vector<double>>>(config_data, "domains");
+
+    std::unordered_map<std::string, configuration_t> base_configurations;
+    for (auto &func : funcs)
+        base_configurations[func] = {.func = func, .lbound = domains[func][0], .ubound = domains[func][1]};
+
+    auto get_conf_data = [&storage, &base_configurations](const std::string &name,
+                                                          const std::string &ftype) -> configuration_t {
+        configuration_t config = base_configurations[name];
+        config.func = name;
+        config.ftype = ftype;
+
+        using namespace sqlite_orm;
+        auto conf_ids =
+            storage.select(columns(&configuration_t::id), where(is_equal(&configuration_t::ftype, config.ftype) and
+                                                                is_equal(&configuration_t::func, config.func) and
+                                                                is_equal(&configuration_t::lbound, config.lbound) and
+                                                                is_equal(&configuration_t::ubound, config.ubound) and
+                                                                is_equal(&configuration_t::ilbound, config.ilbound) and
+                                                                is_equal(&configuration_t::iubound, config.iubound)));
+        config.id = conf_ids.size() ? std::get<int>(conf_ids[0]) : storage.insert(config);
+        return config;
+    };
+
+    for (auto &run_set : run_sets) {
+        const auto &[n_eval, n_repeat] = run_set;
+        std::cerr << "Running benchmark with input vector of length " << n_eval << " and " << n_repeat << " repeats.\n";
+        Eigen::VectorXd dvals = 0.5 * (Eigen::ArrayXd::Random(n_eval) + 1.0);
+        Eigen::VectorXf fvals = dvals.cast<float>();
+        // Eigen::VectorX<cdouble> cvals = 0.5 * (Eigen::ArrayX<cdouble>::Random(n_eval) +
+        // std::complex<double>{1.0, 1.0});
+
+        for (const auto &func : funcs_to_eval) {
+            const auto &domain = domains[func];
+            Eigen::VectorXd ref;
+
+            for (const auto &stype : std::array<std::string, 2>{"float", "double"}) {
+                for (const auto &lib : libs) {
+                    for (const auto &veclevel : veclevels) {
+                        function_key key = {.lib = lib, .fun = func, .veclevel = veclevel};
+
+                        measurement_t meas;
+                        if (stype == "float" && float_funs.count(key)) {
+                            auto conf = get_conf_data(key.fun, "f");
+                            meas = test_func_new<float>(float_funs[key], key.veclevel, libraries_info[key.lib], conf,
+                                                        fvals, ref, n_repeat);
+                        }
+                        if (stype == "double" && double_funs.count(key)) {
+                            auto conf = get_conf_data(key.fun, "d");
+                            meas = test_func_new<double>(double_funs[key], key.veclevel, libraries_info[key.lib], conf,
+                                                         dvals, ref, n_repeat);
+                        }
+
+                        if (meas) {
+                            std::cout << meas;
+                            storage.insert(meas);
+                        }
+                    }
+                }
             }
         }
     }
-
     return 0;
 }
 
