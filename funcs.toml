@@ -233,3 +233,223 @@ hermite_1 = "gsl_sf_hermite(1, x)"
 hermite_2 = "gsl_sf_hermite(2, x)"
 hermite_3 = "gsl_sf_hermite(3, x)"
 riemann_zeta = "gsl_sf_zeta(x)"
+
+[sleef]
+types = ["float", "double"]
+instructions = ["x86_64", "avx2", "avx512"]
+
+[sleef.calltemplates.sin_pi]
+float_x86_64 = "Sleef_sinpif1_u05purecfma(x)"
+float_avx2 = "Sleef_sinpif{veclevel}_u05avx2(x)"
+float_avx512 = "Sleef_sinpif{veclevel}_u05avx512f(x)"
+double_x86_64 = "Sleef_sinpid1_u05purecfma(x)"
+double_avx2 = "Sleef_sinpid{veclevel}_u05avx2(x)"
+double_avx512 = "Sleef_sinpid{veclevel}_u05avx512f(x)"
+
+[sleef.calltemplates.cos_pi]
+float_x86_64 = "Sleef_cospif1_u05purecfma(x)"
+float_avx2 = "Sleef_cospif{veclevel}_u05avx2(x)"
+float_avx512 = "Sleef_cospif{veclevel}_u05avx512f(x)"
+double_x86_64 = "Sleef_cospid1_u05purecfma(x)"
+double_avx2 = "Sleef_cospid{veclevel}_u05avx2(x)"
+double_avx512 = "Sleef_cospid{veclevel}_u05avx512f(x)"
+
+[sleef.calltemplates.sin]
+float_x86_64 = "Sleef_sinf1_u10purecfma(x)"
+float_avx2 = "Sleef_sinf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_sinf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_sind1_u10purecfma(x)"
+double_avx2 = "Sleef_sind{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_sind{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.cos]
+float_x86_64 = "Sleef_cosf1_u10purecfma(x)"
+float_avx2 = "Sleef_cosf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_cosf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_cosd1_u10purecfma(x)"
+double_avx2 = "Sleef_cosd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_cosd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.tan]
+float_x86_64 = "Sleef_tanf1_u10purecfma(x)"
+float_avx2 = "Sleef_tanf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_tanf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_tand1_u10purecfma(x)"
+double_avx2 = "Sleef_tand{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_tand{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.sinh]
+float_x86_64 = "Sleef_sinhf1_u10purecfma(x)"
+float_avx2 = "Sleef_sinhf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_sinhf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_sinhd1_u10purecfma(x)"
+double_avx2 = "Sleef_sinhd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_sinhd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.cosh]
+float_x86_64 = "Sleef_coshf1_u10purecfma(x)"
+float_avx2 = "Sleef_coshf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_coshf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_coshd1_u10purecfma(x)"
+double_avx2 = "Sleef_coshd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_coshd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.tanh]
+float_x86_64 = "Sleef_tanhf1_u10purecfma(x)"
+float_avx2 = "Sleef_tanhf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_tanhf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_tanhd1_u10purecfma(x)"
+double_avx2 = "Sleef_tanhd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_tanhd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.asin]
+float_x86_64 = "Sleef_asinf1_u10purecfma(x)"
+float_avx2 = "Sleef_asinf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_asinf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_asind1_u10purecfma(x)"
+double_avx2 = "Sleef_asind{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_asind{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.acos]
+float_x86_64 = "Sleef_acosf1_u10purecfma(x)"
+float_avx2 = "Sleef_acosf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_acosf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_acosd1_u10purecfma(x)"
+double_avx2 = "Sleef_acosd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_acosd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.atan]
+float_x86_64 = "Sleef_atanf1_u10purecfma(x)"
+float_avx2 = "Sleef_atanf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_atanf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_atand1_u10purecfma(x)"
+double_avx2 = "Sleef_atand{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_atand{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.asinh]
+float_x86_64 = "Sleef_asinhf1_u10purecfma(x)"
+float_avx2 = "Sleef_asinhf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_asinhf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_asinhd1_u10purecfma(x)"
+double_avx2 = "Sleef_asinhd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_asinhd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.acosh]
+float_x86_64 = "Sleef_acoshf1_u10purecfma(x)"
+float_avx2 = "Sleef_acoshf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_acoshf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_acoshd1_u10purecfma(x)"
+double_avx2 = "Sleef_acoshd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_acoshd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.atanh]
+float_x86_64 = "Sleef_atanhf1_u10purecfma(x)"
+float_avx2 = "Sleef_atanhf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_atanhf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_atanhd1_u10purecfma(x)"
+double_avx2 = "Sleef_atanhd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_atanhd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.log]
+float_x86_64 = "Sleef_logf1_u10purecfma(x)"
+float_avx2 = "Sleef_logf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_logf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_logd1_u10purecfma(x)"
+double_avx2 = "Sleef_logd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_logd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.log2]
+float_x86_64 = "Sleef_log2f1_u10purecfma(x)"
+float_avx2 = "Sleef_log2f{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_log2f{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_log2d1_u10purecfma(x)"
+double_avx2 = "Sleef_log2d{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_log2d{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.log10]
+float_x86_64 = "Sleef_log10f1_u10purecfma(x)"
+float_avx2 = "Sleef_log10f{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_log10f{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_log10d1_u10purecfma(x)"
+double_avx2 = "Sleef_log10d{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_log10d{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.exp]
+float_x86_64 = "Sleef_expf1_u10purecfma(x)"
+float_avx2 = "Sleef_expf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_expf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_expd1_u10purecfma(x)"
+double_avx2 = "Sleef_expd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_expd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.exp2]
+float_x86_64 = "Sleef_exp2f1_u10purecfma(x)"
+float_avx2 = "Sleef_exp2f{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_exp2f{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_exp2d1_u10purecfma(x)"
+double_avx2 = "Sleef_exp2d{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_exp2d{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.exp10]
+float_x86_64 = "Sleef_exp10f1_u10purecfma(x)"
+float_avx2 = "Sleef_exp10f{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_exp10f{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_exp10d1_u10purecfma(x)"
+double_avx2 = "Sleef_exp10d{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_exp10d{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.erf]
+float_x86_64 = "Sleef_erff1_u10purecfma(x)"
+float_avx2 = "Sleef_erff{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_erff{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_erfd1_u10purecfma(x)"
+double_avx2 = "Sleef_erfd{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_erfd{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.erfc]
+float_x86_64 = "Sleef_erfcf1_u15purecfma(x)"
+float_avx2 = "Sleef_erfcf{veclevel}_u15avx2(x)"
+float_avx512 = "Sleef_erfcf{veclevel}_u15avx512f(x)"
+double_x86_64 = "Sleef_erfcd1_u15purecfma(x)"
+double_avx2 = "Sleef_erfcd{veclevel}_u15avx2(x)"
+double_avx512 = "Sleef_erfcd{veclevel}_u15avx512f(x)"
+
+[sleef.calltemplates.lgamma]
+float_x86_64 = "Sleef_lgammaf1_u10purecfma(x)"
+float_avx2 = "Sleef_lgammaf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_lgammaf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_lgammad1_u10purecfma(x)"
+double_avx2 = "Sleef_lgammad{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_lgammad{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.tgamma]
+float_x86_64 = "Sleef_tgammaf1_u10purecfma(x)"
+float_avx2 = "Sleef_tgammaf{veclevel}_u10avx2(x)"
+float_avx512 = "Sleef_tgammaf{veclevel}_u10avx512f(x)"
+double_x86_64 = "Sleef_tgammad1_u10purecfma(x)"
+double_avx2 = "Sleef_tgammad{veclevel}_u10avx2(x)"
+double_avx512 = "Sleef_tgammad{veclevel}_u10avx512f(x)"
+
+[sleef.calltemplates.sqrt]
+float_x86_64 = "Sleef_sqrtf1_u05purecfma(x)"
+float_avx2 = "Sleef_sqrtf{veclevel}_u05avx2(x)"
+float_avx512 = "Sleef_sqrtf{veclevel}_u05avx512f(x)"
+double_x86_64 = "Sleef_sqrtd1_u05purecfma(x)"
+double_avx2 = "Sleef_sqrtd{veclevel}_u05avx2(x)"
+double_avx512 = "Sleef_sqrtd{veclevel}_u05avx512f(x)"
+
+[sleef.calltemplates."pow3.5"]
+float_x86_64 = "Sleef_powf1_u10purecfma(x, 3.5)"
+float_avx2 = "Sleef_powf{veclevel}_u10avx2(x, {vectype}{{3.5}})"
+float_avx512 = "Sleef_powf{veclevel}_u10avx512f(x, {vectype}{{3.5}})"
+double_x86_64 = "Sleef_powd1_u10purecfma(x, 3.5)"
+double_avx2 = "Sleef_powd{veclevel}_u10avx2(x, {vectype}{{3.5}})"
+double_avx512 = "Sleef_powd{veclevel}_u10avx512f(x, {vectype}{{3.5}})"
+
+[sleef.calltemplates.pow13]
+float_x86_64 = "Sleef_powf1_u10purecfma(x, 13.0)"
+float_avx2 = "Sleef_powf{veclevel}_u10avx2(x, {vectype}{{13.0}})"
+float_avx512 = "Sleef_powf{veclevel}_u10avx512f(x, {vectype}{{13.0}})"
+double_x86_64 = "Sleef_powd1_u10purecfma(x, 13.0)"
+double_avx2 = "Sleef_powd{veclevel}_u10avx2(x, {vectype}{{13.0}})"
+double_avx512 = "Sleef_powd{veclevel}_u10avx512f(x, {vectype}{{13.0}})"
