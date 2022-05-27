@@ -19,12 +19,12 @@
 run_info_t run_info;
 toolchain_info_t toolchain_info;
 host_info_t host_info;
-std::unordered_map<std::string, library_info_t> libraries_info = {
-    {"agnerfog", sf::functions::af::library_info}, {"amdlibm", sf::functions::amd::library_info},
-    {"baobzi", sf::functions::amd::library_info},  {"boost", sf::functions::boost::library_info},
-    {"eigen", sf::functions::eigen::library_info}, {"gsl", sf::functions::gsl::library_info},
-    {"fort", sf::functions::fort::library_info},   {"misc", sf::functions::misc::library_info},
-    {"sctl", sf::functions::SCTL::library_info},   {"sleef", sf::functions::sleef::library_info},
+std::map<std::string, library_info_t> libraries_info = {
+    {"agnerfog", sf::functions::af::library_info},   {"amdlibm", sf::functions::amd::library_info},
+    {"baobzi", sf::functions::baobzi::library_info}, {"boost", sf::functions::boost::library_info},
+    {"eigen", sf::functions::eigen::library_info},   {"gsl", sf::functions::gsl::library_info},
+    {"fort", sf::functions::fort::library_info},     {"misc", sf::functions::misc::library_info},
+    {"sctl", sf::functions::SCTL::library_info},     {"sleef", sf::functions::sleef::library_info},
     {"stl", sf::functions::stl::library_info},
 };
 
@@ -208,31 +208,26 @@ inline auto init_storage(const std::string &path) {
             foreign_key(&measurement_t::library).references(&library_info_t::id),
             foreign_key(&measurement_t::configuration).references(&configuration_t::id)));
 
-    storage.sync_schema();
-    auto host_ids =
-        storage.select(columns(&host_info_t::id), where(is_equal(&host_info_t::cpuname, host_info.cpuname)));
-    if (host_ids.size() == 0)
-        host_info.id = storage.insert(host_info);
-    else
-        host_info.id = std::get<int>(host_ids[0]);
+    auto set_id = [&storage](const auto &ids, auto &info) {
+        if (ids.size() == 0)
+            info.id = storage.insert(info);
+        else
+            info.id = std::get<int>(ids[0]);
+    };
 
-    auto toolchain_ids = storage.select(columns(&toolchain_info_t::id),
-                                        where(is_equal(&toolchain_info_t::compiler, toolchain_info.compiler) and
-                                              is_equal(&toolchain_info_t::compilervers, toolchain_info.compilervers) and
-                                              is_equal(&toolchain_info_t::libcvers, toolchain_info.libcvers)));
-    if (toolchain_ids.size() == 0)
-        toolchain_info.id = storage.insert(toolchain_info);
-    else
-        toolchain_info.id = std::get<int>(toolchain_ids[0]);
+    storage.sync_schema();
+
+    set_id(storage.select(columns(&host_info_t::id), where(is_equal(&host_info_t::cpuname, host_info.cpuname))), host_info);
+    set_id(storage.select(columns(&toolchain_info_t::id),
+                          where(is_equal(&toolchain_info_t::compiler, toolchain_info.compiler) and
+                                is_equal(&toolchain_info_t::compilervers, toolchain_info.compilervers) and
+                                is_equal(&toolchain_info_t::libcvers, toolchain_info.libcvers))),
+           toolchain_info);
 
     for (auto &[name, lib] : libraries_info) {
-        auto library_ids =
-            storage.select(columns(&library_info_t::id), where(is_equal(&library_info_t::name, lib.name) and
-                                                               is_equal(&library_info_t::version, lib.version)));
-        if (library_ids.size() == 0)
-            lib.id = storage.insert(lib);
-        else
-            lib.id = std::get<int>(library_ids[0]);
+        set_id(storage.select(columns(&library_info_t::id), where(is_equal(&library_info_t::name, lib.name) and
+                                                                  is_equal(&library_info_t::version, lib.version))),
+               lib);
     }
 
     run_info.time = storage.select(datetime("now")).front();
@@ -245,8 +240,54 @@ inline auto init_storage(const std::string &path) {
 
 using Storage = decltype(init_storage(""));
 
+int new_main(int argc, char *argv[], Storage &storage) {
+    std::cout << host_info.cpuname << std::endl;
+    std::cout << "    " + toolchain_info.compiler + ": " + toolchain_info.compilervers << std::endl;
+    std::cout << "    libc: " + toolchain_info.libcvers << std::endl;
+    for (auto &[key, lib] : libraries_info)
+        std::cout << "    " + lib.name + ": " + lib.version << std::endl;
+
+    std::set<std::string> input_keys = parse_args(argc - 1, argv + 1);
+
+    auto &float_funs = sf::functions::get_float_funs();
+    auto &double_funs = sf::functions::get_double_funs();
+    std::set<std::string> libs;
+    std::set<std::string> funcs;
+    std::set<int> veclevels;
+
+    for (auto &[key, val] : float_funs) {
+        libs.insert(key.lib);
+        funcs.insert(key.fun);
+        veclevels.insert(key.veclevel);
+    }
+
+    std::set<std::string> funcs_to_eval;
+    if (input_keys.size() > 0)
+        std::set_intersection(funcs.begin(), funcs.end(), input_keys.begin(), input_keys.end(),
+                              std::inserter(funcs_to_eval, funcs_to_eval.end()));
+    else
+        funcs_to_eval = funcs;
+
+    std::vector<std::pair<int, int>> run_sets;
+    for (uint8_t shift = 0; shift <= 14; shift += 14)
+        run_sets.push_back({1 << (11 + shift), 1 << (14 - shift)});
+
+    for (const auto &func : funcs_to_eval) {
+        for (const auto &lib : libs) {
+            for (const auto &veclevel : veclevels) {
+                if (float_funs.count({.lib = lib, .fun = func, .veclevel = veclevel}))
+                    std::cout << func + " " + lib + " " + std::to_string(veclevel) + "\n";
+            }
+        }
+    }
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     Storage storage = init_storage("db.sqlite");
+
+    return new_main(argc, argv, storage);
 
     std::cout << host_info.cpuname << std::endl;
     std::cout << "    " + toolchain_info.compiler + ": " + toolchain_info.compilervers << std::endl;

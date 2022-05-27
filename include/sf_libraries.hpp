@@ -31,6 +31,9 @@ void fort_bessel_yn_(int *, double *, double *);
 }
 
 namespace sf::functions {
+std::unordered_map<function_key, multi_eval_func<float>> &get_float_funs();
+std::unordered_map<function_key, multi_eval_func<double>> &get_double_funs();
+
 namespace af {
 static library_info_t library_info = {
     .name = "agnerfog",
@@ -59,7 +62,7 @@ get_funs_dx1(std::set<std::string> &keys_to_eval, std::unordered_map<std::string
 } // namespace baobzi
 
 namespace boost {
-static library_info_t library_info = {.name = "boost", .longname = "Boost", .version = utils::get_baobzi_version()};
+static library_info_t library_info = {.name = "boost", .longname = "Boost", .version = utils::get_boost_version()};
 std::unordered_map<std::string, multi_eval_func<float>> &get_funs_fx1();
 std::unordered_map<std::string, multi_eval_func<double>> &get_funs_dx1();
 } // namespace boost

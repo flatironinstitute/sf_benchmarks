@@ -98,12 +98,20 @@ for lname, lconfig in config.items():
             else:
                 funcs[mapkey].append(func)
 
+print("#include <sf_benchmarks.hpp>")
+print("#include <sf_libraries.hpp>")
+print("namespace sf::functions {")
 
 for mapname, funcl in funcs.items():
     print("std::unordered_map<function_key, multi_eval_func<{}>> {} = {{".format(funcl[0].stype, mapname))
     print(",\n".join([func.gen_map_elem() for func in funcl]))
     print("};\n")
 
-print(lnames)
-print(fnames)
-print(fnames.difference(fdnames))
+print("std::unordered_map<function_key, multi_eval_func<float>> &get_float_funs() { return funcs_float; }")
+print("std::unordered_map<function_key, multi_eval_func<double>> &get_double_funs() { return funcs_double; }")
+
+print("}")
+
+# print(lnames)
+# print(fnames)
+# print(fnames.difference(fdnames))
