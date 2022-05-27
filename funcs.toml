@@ -93,6 +93,45 @@ pow13 = "std::pow(x, 13)"
 memset = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memset(dst, 0, N * sizeof({stype})); }}"
 memcpy = "[](const {stype} *src, {stype} *dst, size_t N) {{ std::memcpy(dst, src, N * sizeof({stype})); }}"
 
+[boost]
+types = ["float", "double"]
+instructions = ["x86_64"]
+
+[boost.calltemplates]
+sin_pi = "::boost::math::sin_pi(x)"
+sinc_pi = "::boost::math::sinc_pi(x)"
+cos_pi = "::boost::math::cos_pi(x)"
+tgamma = "::boost::math::tgamma(x)"
+lgamma = "::boost::math::lgamma(x)"
+digamma = "::boost::math::digamma(x)"
+erf = "::boost::math::erf(x)"
+erfc = "::boost::math::erfc(x)"
+pow13 = "::boost::math::pow<13>(x)"
+bessel_Y0 = "::boost::math::cyl_neumann(0, x)"
+bessel_Y1 = "::boost::math::cyl_neumann(1, x)"
+bessel_Y2 = "::boost::math::cyl_neumann(2, x)"
+bessel_I0 = "::boost::math::cyl_bessel_i(0, x)"
+bessel_I1 = "::boost::math::cyl_bessel_i(1, x)"
+bessel_I2 = "::boost::math::cyl_bessel_i(2, x)"
+bessel_J0 = "::boost::math::cyl_bessel_j(0, x)"
+bessel_J1 = "::boost::math::cyl_bessel_j(1, x)"
+bessel_J2 = "::boost::math::cyl_bessel_j(2, x)"
+bessel_K0 = "::boost::math::cyl_bessel_k(0, x)"
+bessel_K1 = "::boost::math::cyl_bessel_k(1, x)"
+bessel_K2 = "::boost::math::cyl_bessel_k(2, x)"
+bessel_j0 = "::boost::math::sph_bessel(0, x)"
+bessel_j1 = "::boost::math::sph_bessel(1, x)"
+bessel_j2 = "::boost::math::sph_bessel(2, x)"
+bessel_y0 = "::boost::math::sph_neumann(0, x)"
+bessel_y1 = "::boost::math::sph_neumann(1, x)"
+bessel_y2 = "::boost::math::sph_neumann(2, x)"
+hermite_0 = "::boost::math::hermite(0, x)"
+hermite_1 = "::boost::math::hermite(1, x)"
+hermite_2 = "::boost::math::hermite(2, x)"
+hermite_3 = "::boost::math::hermite(3, x)"
+riemann_zeta = "::boost::math::zeta(x)"
+
+
 [agnerfog]
 types = ["float", "double"]
 instructions = ["avx2", "avx512"]

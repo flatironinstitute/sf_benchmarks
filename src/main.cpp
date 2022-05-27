@@ -310,15 +310,18 @@ int new_main(int argc, char *argv[], Storage &storage) {
 
     auto &float_funs = sf::functions::get_float_funs();
     auto &double_funs = sf::functions::get_double_funs();
-    std::set<std::string> libs;
-    std::set<std::string> funcs;
+    std::set<std::string> libs, funcs;
     std::set<int> veclevels;
 
-    for (auto &[key, val] : float_funs) {
-        libs.insert(key.lib);
-        funcs.insert(key.fun);
-        veclevels.insert(key.veclevel);
-    }
+    auto update_sets = [&libs, &funcs, &veclevels](auto &funs) {
+        for (auto &[key, val] : funs) {
+            libs.insert(key.lib);
+            funcs.insert(key.fun);
+            veclevels.insert(key.veclevel);
+        }
+    };
+    update_sets(float_funs);
+    update_sets(double_funs);
 
     std::set<std::string> funcs_to_eval;
     if (input_keys.size() > 0)
