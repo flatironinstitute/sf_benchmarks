@@ -10,8 +10,6 @@ find_package(GSL REQUIRED)
 find_package(Boost)
 find_package(SQLite3)
 
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fallow-argument-mismatch")
-
 set (default_build_type "Release")
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message (STATUS "No build type specified. Setting build type to Release.")
@@ -49,6 +47,8 @@ link_directories(${CMAKE_BINARY_DIR}/contrib/lib64 ${PROJECT_SOURCE_DIR}/extern/
 file(GLOB SF_SOURCES "src/*.cpp" "src/*.f")
 add_executable(sf_benchmarks ${SF_SOURCES})
 target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES} ${GSL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-target_link_libraries(sf_benchmarks sleef gsl baobzi dl SQLite::SQLite3)
+target_link_libraries(sf_benchmarks sleef GSL::gsl baobzi dl SQLite::SQLite3)
 add_dependencies(sf_benchmarks libsleef libbaobzi)
-target_compile_options(sf_benchmarks PRIVATE -march=native)
+target_compile_options(sf_benchmarks PRIVATE -march=native -ftree-loop-vectorize -ffast-math
+  $<$<COMPILE_LANGUAGE:Fortran>:-fallow-argument-mismatch>)
+

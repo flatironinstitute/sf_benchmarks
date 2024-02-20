@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
         {"asin", {.lbound = -1.0, .ubound = 1.0}},
         {"asinh", {.lbound = -100.0, .ubound = 100.0}},
         {"atan", {.lbound = -100.0, .ubound = 100.0}},
-        {"atanh", {.lbound = -1.0, .ubound = 1.0}},
+        {"atanh", {.lbound = -0.9, .ubound = 0.9}},
         {"bessel_I0", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_I1", {.lbound = 0.1, .ubound = 30.0}},
         {"bessel_I2", {.lbound = 0.1, .ubound = 30.0}},
