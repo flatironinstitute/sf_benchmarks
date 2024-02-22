@@ -49,6 +49,6 @@ add_executable(sf_benchmarks ${SF_SOURCES})
 target_include_directories(sf_benchmarks PRIVATE ${SF_INCLUDES} ${GSL_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 target_link_libraries(sf_benchmarks sleef GSL::gsl baobzi dl SQLite::SQLite3)
 add_dependencies(sf_benchmarks libsleef libbaobzi)
-target_compile_options(sf_benchmarks PRIVATE -march=native -ftree-loop-vectorize -ffast-math
+target_compile_options(sf_benchmarks PRIVATE -march=native -ftree-loop-vectorize -ffast-math -DSCTL_HAVE_LIBMVEC
   $<$<COMPILE_LANGUAGE:Fortran>:-fallow-argument-mismatch>)
 
